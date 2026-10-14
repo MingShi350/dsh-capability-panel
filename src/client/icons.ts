@@ -109,10 +109,11 @@ export const IconTriangleRight = resolveIcon(ICON_NAME_PAIRS.IconTriangleRight);
  * function so tests can drive both branches; the module constant resolves it
  * against the real package.
  *
- * One consumer: the footer settings entry. The `settings.open` keybinding that
- * entry drives shipped in the SAME host generation as the renamed icon set
- * (verified: 0.1.6's settings bundle has no such binding), so this is the
- * closest client-visible signal that the shortcut exists. If a future host
+ * One consumer: the footer settings entry. The settings shell that entry
+ * opens — its trigger button and the `settings.open` keybinding fallback —
+ * shipped in the SAME host generation as the renamed icon set
+ * (verified: 0.1.6's settings bundle has neither), so this is the
+ * closest client-visible signal that the entry can work. If a future host
  * renames icons again this reads false and the entry hides — the safe
  * direction.
  */

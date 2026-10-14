@@ -135,9 +135,8 @@ function sortSkills(skills: readonly SkillEntry[]): SkillEntry[] {
 }
 
 /**
- * Platform for the settings shortcut's modifier: the host binds
- * `settings.open` to Cmd+, on macOS and Ctrl+, elsewhere (the `primary`
- * modifier in its binding table resolves the same way).
+ * Platform for the settings shortcut's modifier: `primary` resolves to Cmd on
+ * macOS and Ctrl elsewhere.
  */
 function isMacPlatform(): boolean {
   const platform = navigator.platform ?? '';
@@ -145,11 +144,30 @@ function isMacPlatform(): boolean {
 }
 
 /**
+ * Whether this page runs inside the desktop shell, detected the same way the
+ * shell's own shortcut service does: the desktop preload stamps
+ * `<html data-platform>`, a plain browser page has none.
+ */
+function isDesktopShell(): boolean {
+  return document.documentElement?.dataset['platform'] !== undefined;
+}
+
+/**
  * Open the Settings modal by driving its official keybinding through the input
- * pipeline. The host's shortcuts service listens for `keydown` on `window`
- * with no `isTrusted` gate, so a synthesized event is processed exactly like a
+ * pipeline — the FALLBACK for shells whose settings trigger cannot be found in
+ * the DOM. The host's shortcuts service listens for `keydown` on `window` with
+ * no `isTrusted` gate, so a synthesized event is processed exactly like a
  * physical press — region "page" (no editable/terminal ancestor), no open
  * shortcut-modal, both of which the `settings.open` command accepts.
+ *
+ * Two 0.2.0-era constraints shape the chord. The binding table splits by
+ * runtime: desktop keeps primary+Comma, the web profile binds
+ * primary+alt+Comma (the browser's own menu owns the plain chord), so the
+ * synthesized event must match the runtime it lands in. And on the desktop
+ * shell the NATIVE keyboard bridge owns every configurable binding — the DOM
+ * listener bails out before dispatch (`if (native) return`), so a synthesized
+ * event is swallowed there no matter its shape; that shell is why the trigger
+ * click in `openGlobalSettings` is the primary path and this the fallback.
  *
  * This deliberately uses the input seam, not a host internal: the shortcuts
  * service is not visible to plugin contexts, and the settings shell exposes no
@@ -166,6 +184,8 @@ function dispatchOpenSettings(): void {
       key: ',',
       metaKey: mac,
       ctrlKey: !mac,
+      // The web profile's default chord carries alt; the desktop one does not.
+      altKey: !isDesktopShell(),
       bubbles: true,
       cancelable: true,
     }),
@@ -194,15 +214,27 @@ function selectCapabilitySection(label: string): boolean {
 
 /**
  * Open Settings ON the capability-panel section. The shell offers no section
- * deep-link, so this drives the two official gestures in sequence: the
- * settings.open keybinding (which TOGGLES — skipped when the dialog is already
- * open, or it would close it), then a nav-row click once the dialog has
- * mounted. The retry is bounded; if the row never appears the user still lands
- * on the settings landing page, which is the pre-existing behavior.
+ * deep-link, so this drives the two official gestures in sequence: open the
+ * dialog, then click our nav row once it has mounted.
+ *
+ * The opening gesture is the shell's own settings TRIGGER — the button
+ * wrapping the `settings.trigger` slot outlet — clicked like a user would.
+ * That is the one path that works on every shell the panel supports: the 0.2
+ * desktop window routes configurable bindings through its native keyboard
+ * bridge and discards synthesized DOM keydowns outright, while the web
+ * profile's binding moved to primary+alt — both break the bare keybinding
+ * dispatch, neither breaks a click. The synthesized keybinding stays as the
+ * fallback for a shell whose trigger this query cannot name. The retry is
+ * bounded; if the row never appears the user still lands on the settings
+ * landing page, which is the pre-existing behavior.
  */
 function openGlobalSettings(sectionLabel: string): void {
   close();
-  if (document.querySelector('[data-shortcut-modal="settings"]') === null) dispatchOpenSettings();
+  if (document.querySelector('[data-shortcut-modal="settings"]') === null) {
+    const trigger = document.querySelector('[data-slot="settings.trigger"]')?.closest('button');
+    if (trigger !== null && trigger !== undefined) trigger.click();
+    else dispatchOpenSettings();
+  }
   let attempts = 0;
   const trySelect = (): void => {
     attempts += 1;
