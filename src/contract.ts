@@ -65,9 +65,12 @@ export interface SkillEntry {
    * the client's `openResource` call — the panel's "open the skill file" entry.
    * The Host builds it from the skills service's absolute instruction file path
    * (which directory-bundle and flat-Markdown skills both report, and virtual
-   * skills do not), so it is absent whenever there is no file to show, or when
-   * the Host predates the addressing grammar. The panel then renders no entry
-   * at all rather than one that cannot work.
+   * skills do not). A provider-registered skill that reports no `path` but
+   * keeps the canonical `<resourceBase>/SKILL.md` on disk gets that probed
+   * location instead — the Host's bundled Office provider surfaces its file
+   * only as a private `locator`. The entry is absent whenever no file can be
+   * named, or when the Host predates the addressing grammar: the panel renders
+   * no entry at all rather than one that cannot work.
    */
   readonly fileAddress?: string;
   /**

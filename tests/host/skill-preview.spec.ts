@@ -1,6 +1,40 @@
-import { describe, expect, it, vi } from 'vitest';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { loadFileAddressFor, previewAddressFor } from '../../src/host/skill-preview.js';
+import { loadFileAddressFor, previewAddressFor, resolveInstructionFile } from '../../src/host/skill-preview.js';
+
+const tempDirs: string[] = [];
+
+afterEach(() => {
+  while (tempDirs.length > 0) rmSync(tempDirs.pop()!, { recursive: true, force: true });
+});
+
+describe('resolveInstructionFile', () => {
+  it('keeps the provider-reported path untouched', () => {
+    expect(resolveInstructionFile('/reported/SKILL.md', '/elsewhere')).toBe('/reported/SKILL.md');
+    expect(resolveInstructionFile('/reported/SKILL.md', '')).toBe('/reported/SKILL.md');
+  });
+
+  it('probes the canonical SKILL.md of a directory bundle that reports no path', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'capability-panel-skill-'));
+    tempDirs.push(dir);
+    writeFileSync(join(dir, 'SKILL.md'), '---\nname: demo\n---\n');
+    expect(resolveInstructionFile('', dir)).toBe(join(dir, 'SKILL.md'));
+  });
+
+  it('reports nothing for a directory without SKILL.md, and for no directory at all', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'capability-panel-skill-'));
+    tempDirs.push(dir);
+    // A provider naming its instruction file differently keeps no preview
+    // entry rather than a guessed wrong one (e.g. the badge skill's
+    // dsh-badge.md).
+    writeFileSync(join(dir, 'dsh-badge.md'), 'body');
+    expect(resolveInstructionFile('', dir)).toBe('');
+    expect(resolveInstructionFile('', '')).toBe('');
+  });
+});
 
 describe('skill preview addresses', () => {
   it('addresses an instruction file through the host helper', async () => {

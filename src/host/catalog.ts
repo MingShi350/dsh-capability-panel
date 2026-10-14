@@ -4,7 +4,7 @@ import type { RawEvent } from '../load-state.js';
 import type { AgentLike, HostServices, SessionCapabilityState } from './types.js';
 import { RESERVED_TOOL } from './reserved.js';
 import { readConfiguredMcpServers } from './mcp-connections.js';
-import { loadFileAddressFor, previewAddressFor } from './skill-preview.js';
+import { loadFileAddressFor, previewAddressFor, resolveInstructionFile } from './skill-preview.js';
 
 /** Coerce a skill summary field to a string, falling back when the runtime shape is wrong. */
 export function coerceString(value: unknown, fallback: string): string {
@@ -129,8 +129,12 @@ async function readAvailable(
       const group = groupFor(source, provider, rawRoot);
       // The skill's instruction file, when the provider has one: what the
       // panel's preview entry shows in the Host's right sidebar. A virtual
-      // skill reports no path, and then the entry is absent rather than broken.
-      const file = coerceString(item.path, '');
+      // skill reports no path, and then the entry is absent rather than
+      // broken. A provider-registered skill may also omit `path` while its
+      // directory bundle keeps the canonical SKILL.md (the Host's bundled
+      // Office provider does exactly this) — resolveInstructionFile probes
+      // that one location so such rows keep their preview entry.
+      const file = resolveInstructionFile(coerceString(item.path, ''), rawPath);
       const fileAddress = file === '' ? undefined : previewAddressFor(forFile, sessionId, cwd, file);
       const existing = seen.get(item.name);
       if (existing !== undefined) {

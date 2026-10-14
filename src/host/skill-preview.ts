@@ -23,6 +23,28 @@
 /** The Host helper's signature, as this plugin uses it. */
 export type FileAddressFor = (sessionId: string, cwd: string | undefined, path: string) => string;
 
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
+
+/**
+ * The instruction file for a skill whose provider reported no `path`.
+ *
+ * Provider-registered skills list their candidates verbatim, and some
+ * providers keep the file location in a private field instead of the
+ * `path` the filesystem discovery normalizes — the Host's own bundled
+ * Office provider does exactly this (its `locator` never surfaces). A
+ * directory-bundle skill's instruction file is canonically
+ * `<resourceBase>/SKILL.md`, so probe that one location on disk. Probing
+ * rather than assuming is what keeps this safe: a provider naming its
+ * file differently (the badge skill's `dsh-badge.md`) simply keeps no
+ * preview entry — the same absence as before, never a wrong address.
+ */
+export function resolveInstructionFile(reported: string, resourceDir: string): string {
+  if (reported !== '') return reported;
+  if (resourceDir === '') return '';
+  const candidate = join(resourceDir, 'SKILL.md');
+  return existsSync(candidate) ? candidate : '';
+}
 /** The single member used from `@deepseek-ai/dsh-util-workspace-path`. */
 function pickFileAddressFor(module: unknown): FileAddressFor | undefined {
   const candidate = (module as { fileAddressFor?: unknown }).fileAddressFor;

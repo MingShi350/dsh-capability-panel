@@ -1,3 +1,6 @@
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { buildPayload, coerceString, displayPath, dshHome, EMPTY_STATE, parentDir, readMcp, readSystemTools } from '../../src/host/catalog.js';
 
@@ -530,6 +533,45 @@ describe('buildPayload MCP source with preset', () => {
     const off = payload.skills.find((s) => s.name === 'switched-off');
     expect(off?.enabled).toBe(false);
     expect(off?.fileAddress).toBe('dsh-resource://file/session/s1//home/u/.dsh/skills/switched-off/SKILL.md');
+  });
+
+  it('probes the canonical SKILL.md for provider skills that report no path', async () => {
+    // The Host's bundled Office provider lists candidates with a private
+    // `locator` and no `path`, so the panel builds the preview address from
+    // the directory bundle's conventional SKILL.md — probed, not assumed.
+    const dir = mkdtempSync(join(tmpdir(), 'capability-panel-catalog-'));
+    try {
+      const officeDir = join(dir, 'office-docx');
+      mkdirSync(officeDir);
+      writeFileSync(join(officeDir, 'SKILL.md'), '---\nname: office-docx\n---\n');
+      const agent = { ctx: {} };
+      const agents = { get: () => agent };
+      const skills = {
+        list: () => [
+          { name: 'office-docx', description: '', source: 'bundled', provider: 'dsh-office', resourceBase: { kind: 'directory', path: officeDir }, invocation: { modelInvocable: true, userInvocable: true } },
+          // Same shape but the directory names its file differently: the row
+          // keeps no preview entry rather than a guessed wrong address.
+          { name: 'odd-doc', description: '', source: 'bundled', provider: 'dsh-badge', resourceBase: { kind: 'directory', path: dir }, invocation: { modelInvocable: true, userInvocable: true } },
+        ],
+      };
+      const tools = {
+        schemas() { return []; },
+      };
+      const services = {
+        get(name: string) {
+          if (name === 'agents') return agents;
+          if (name === 'skills') return skills;
+          if (name === 'tools') return tools;
+          return undefined;
+        },
+      };
+      const payload = await buildPayload(services as never, 's1', EMPTY_STATE);
+      expect(payload.skills.find((s) => s.name === 'office-docx')?.fileAddress)
+        .toBe(`dsh-resource://file/session/s1/${officeDir}/SKILL.md`);
+      expect(payload.skills.find((s) => s.name === 'odd-doc')).not.toHaveProperty('fileAddress');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   it('groups custom skills discovered under a preset directory as that preset', async () => {
