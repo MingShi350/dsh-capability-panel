@@ -422,8 +422,9 @@ describe('buildPayload MCP source with preset', () => {
     const server = payload.mcp.find((s) => s.server === 'mine');
     expect(server?.source).toBe('Mine');
     expect(server).not.toHaveProperty('path');
-    // No preset dirs are known, so the custom skill keeps plain provenance.
-    expect(payload.skills.find((s) => s.name === 'custom-skill')).not.toHaveProperty('group');
+    // No preset dirs are known, so the custom skill cannot join a preset
+    // group — it groups by its raw discovery root instead.
+    expect(payload.skills.find((s) => s.name === 'custom-skill')?.group).toBe('path:/presets/mine/skills');
   });
 
   it('falls back to "unknown" when skill source or provider is not a string', async () => {
@@ -540,6 +541,11 @@ describe('buildPayload MCP source with preset', () => {
         { name: 'preset-root', description: '', source: 'custom', provider: 'filesystem', resourceBase: { kind: 'directory', path: '/presets/cordis/x' }, invocation: { modelInvocable: true, userInvocable: true } },
         { name: 'plain-custom', description: '', source: 'custom', provider: 'filesystem', resourceBase: { kind: 'directory', path: '/elsewhere/skills/plain-custom' }, invocation: { modelInvocable: true, userInvocable: true } },
         { name: 'presetless-dir', description: '', source: 'user-dsh', provider: 'filesystem', resourceBase: { kind: 'directory', path: '/presets/cordis/skills/presetless-dir' }, invocation: { modelInvocable: true, userInvocable: true } },
+        // A runtime plugin may use source=custom and a directory resourceBase
+        // solely so its bundled SKILL.md can be previewed. Even if installed
+        // beneath a preset/profile directory, it is not a filesystem-discovered
+        // preset skill and must remain outside that preset's group/count.
+        { name: 'plugin-skill', description: '', source: 'custom', provider: 'dsh-actions', resourceBase: { kind: 'directory', path: '/presets/cordis/node_modules/dsh-actions/skills/dsh-actions-authoring' }, invocation: { modelInvocable: true, userInvocable: true } },
       ],
     };
     const tools = {
@@ -567,10 +573,50 @@ describe('buildPayload MCP source with preset', () => {
     // Under the preset's directory (nested or direct child) → the preset group.
     expect(payload.skills.find((s) => s.name === 'preset-skill')?.group).toBe('preset:Cordis');
     expect(payload.skills.find((s) => s.name === 'preset-root')?.group).toBe('preset:Cordis');
-    // A custom dir outside every preset keeps the plain custom grouping.
-    expect(payload.skills.find((s) => s.name === 'plain-custom')).not.toHaveProperty('group');
-    // Only custom sources are re-grouped; real user-dsh keeps its own category.
-    expect(payload.skills.find((s) => s.name === 'presetless-dir')).not.toHaveProperty('group');
+    // A custom dir outside every preset groups by its raw discovery root.
+    expect(payload.skills.find((s) => s.name === 'plain-custom')?.group).toBe('path:/elsewhere/skills');
+    // Only custom filesystem discoveries join a preset group; real user-dsh
+    // and runtime plugin registrations group by their own directory instead —
+    // never by the coarse runtime source, and never into the preset's count.
+    expect(payload.skills.find((s) => s.name === 'presetless-dir')?.group).toBe('path:/presets/cordis/skills');
+    expect(payload.skills.find((s) => s.name === 'plugin-skill')?.group).toBe('path:/presets/cordis/node_modules/dsh-actions/skills');
+  });
+
+  it('groups same-source skills from different directories by their discovery root', async () => {
+    // The reported mis-grouping: the Host's bundled Office skills and a
+    // plugin's packaged skill BOTH report source "bundled". Grouping by
+    // source merged them into one bucket whose header showed whichever
+    // directory came first — the Office skills read as living inside the
+    // plugin's install tree.
+    const agent = { ctx: {} };
+    const agents = { get: () => agent };
+    const skills = {
+      list: () => [
+        { name: 'dsh-actions-authoring', description: '', source: 'bundled', provider: 'dsh-actions', resourceBase: { kind: 'directory', path: '/home/u/.dsh/profiles/desktop/node_modules/dsh-actions/skills/dsh-actions-authoring' }, invocation: { modelInvocable: true, userInvocable: true } },
+        { name: 'office-docx', description: '', source: 'bundled', provider: 'dsh-office', resourceBase: { kind: 'directory', path: '/app/runtime/office-skills/office-docx' }, invocation: { modelInvocable: true, userInvocable: true } },
+        { name: 'office-pptx', description: '', source: 'bundled', provider: 'dsh-office', resourceBase: { kind: 'directory', path: '/app/runtime/office-skills/office-pptx' }, invocation: { modelInvocable: true, userInvocable: true } },
+        // A virtual skill has no directory at all: it keeps plain source
+        // grouping rather than inventing a root.
+        { name: 'virtual', description: '', source: 'bundled', provider: 'dsh-office', invocation: { modelInvocable: true, userInvocable: true } },
+      ],
+    };
+    const tools = {
+      schemas() { return []; },
+    };
+    const services = {
+      get(name: string) {
+        if (name === 'agents') return agents;
+        if (name === 'skills') return skills;
+        if (name === 'tools') return tools;
+        return undefined;
+      },
+    };
+    const payload = await buildPayload(services as never, 's1', EMPTY_STATE);
+    expect(payload.skills.find((s) => s.name === 'dsh-actions-authoring')?.group)
+      .toBe('path:/home/u/.dsh/profiles/desktop/node_modules/dsh-actions/skills');
+    expect(payload.skills.find((s) => s.name === 'office-docx')?.group).toBe('path:/app/runtime/office-skills');
+    expect(payload.skills.find((s) => s.name === 'office-pptx')?.group).toBe('path:/app/runtime/office-skills');
+    expect(payload.skills.find((s) => s.name === 'virtual')).not.toHaveProperty('group');
   });
 
   it('keeps the original provenance when a panel shadow lists before the original', async () => {

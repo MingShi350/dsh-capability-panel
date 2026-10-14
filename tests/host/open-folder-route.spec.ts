@@ -195,6 +195,87 @@ describe('open-folder route', () => {
     expect(openFolderMock).toHaveBeenCalledWith('/dsh-home/skills');
   });
 
+  it('opens a path: group root after validating it against the live listing', async () => {
+    // Two skills share the coarse runtime source "bundled"; the path: key
+    // must open ITS OWN root, not the first source match's directory.
+    const fx = fixture({
+      agent: { session: { header: { cwd: '/ws' } } },
+      skillsList: [
+        { name: 'a', source: 'bundled', resourceBase: { kind: 'directory', path: '/plugin/skills/a' } },
+        { name: 'b', source: 'bundled', resourceBase: { kind: 'directory', path: '/app/office-skills/b' } },
+      ],
+    });
+    const result = await call(fx, { sessionId: 's1', source: 'path:/app/office-skills' });
+    expect(result.status).toBe(200);
+    expect(result.json()).toEqual({ ok: true });
+    expect(openFolderMock).toHaveBeenCalledWith('/app/office-skills');
+  });
+
+  it('rejects a path: group the listing does not report', async () => {
+    // The key round-trips through the client, so an unlisted root must never
+    // open — otherwise this route would be an arbitrary-folder opener.
+    const fx = fixture({
+      agent: { session: { header: { cwd: '/ws' } } },
+      skillsList: [
+        { name: 'a', source: 'bundled', resourceBase: { kind: 'directory', path: '/plugin/skills/a' } },
+      ],
+    });
+    const result = await call(fx, { sessionId: 's1', source: 'path:/etc' });
+    expect(result.status).toBe(404);
+    expect(openFolderMock).not.toHaveBeenCalled();
+  });
+
+  it('skips path: validation entries without a usable directory resourceBase', async () => {
+    const fx = fixture({
+      agent: {},
+      skillsList: [
+        { name: 'a', source: 'bundled', resourceBase: null },
+        { name: 'b', source: 'bundled', resourceBase: '/opaque' },
+        { name: 'c', source: 'bundled', resourceBase: { kind: 'url', url: 'https://x' } },
+        { name: 'd', source: 'bundled', resourceBase: { kind: 'directory', path: 42 } },
+        { name: 'e', source: 'bundled', resourceBase: { kind: 'directory', path: '' } },
+        { name: 'f', source: 'bundled', resourceBase: { kind: 'directory', path: '/elsewhere/f' } },
+        { name: 'g', source: 'bundled', resourceBase: { kind: 'directory', path: '/app/office-skills/g' } },
+      ],
+    });
+    const result = await call(fx, { sessionId: 's1', source: 'path:/app/office-skills' });
+    expect(result.status).toBe(200);
+    expect(openFolderMock).toHaveBeenCalledWith('/app/office-skills');
+  });
+
+  it('validates a path: group against the workspace listing without a session', async () => {
+    const fx = fixture({
+      skillsList: [{ name: 'a', source: 'bundled', resourceBase: { kind: 'directory', path: '/app/office-skills/a' } }],
+    });
+    const result = await call(fx, { source: 'path:/app/office-skills' });
+    expect(result.status).toBe(200);
+    expect(openFolderMock).toHaveBeenCalledWith('/app/office-skills');
+  });
+
+  it('rejects a path: group when the validation listing throws', async () => {
+    const fx = fixture({ skillsListThrows: true, agent: {} });
+    const result = await call(fx, { sessionId: 's1', source: 'path:/x' });
+    expect(result.status).toBe(404);
+    expect(openFolderMock).not.toHaveBeenCalled();
+  });
+
+  it('rejects a path: group when the skills service is unavailable', async () => {
+    const fx = fixture({ noSkillsService: true });
+    const result = await call(fx, { source: 'path:/x' });
+    expect(result.status).toBe(404);
+    expect(openFolderMock).not.toHaveBeenCalled();
+  });
+
+  it('resolves a runtime source colliding with the path: spelling by source match first', async () => {
+    const fx = fixture({
+      agent: {},
+      skillsList: [{ name: 'x', source: 'path:/skills', resourceBase: { kind: 'directory', path: '/skills/x' } }],
+    });
+    const result = await call(fx, { sessionId: 's1', source: 'path:/skills' });
+    expect(result.status).toBe(200);
+    expect(openFolderMock).toHaveBeenCalledWith('/skills');
+  });
+
   it('opens DSH_HOME skills for user-dsh without a session id', async () => {
     const result = await call(fixture(), { source: 'user-dsh' });
     expect(result.status).toBe(200);

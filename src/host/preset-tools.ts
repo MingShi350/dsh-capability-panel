@@ -63,11 +63,12 @@ async function presetSkillRows(
   presetDirs: readonly { key: string; path: string }[] = [],
 ): Promise<PresetSkillRow[]> {
   const seen = new Map<string, PresetSkillRow>();
-  const add = (summaries: readonly { name?: unknown; description?: unknown; source?: unknown; resourceBase?: unknown }[], project: boolean): void => {
+  const add = (summaries: readonly { name?: unknown; description?: unknown; source?: unknown; provider?: unknown; resourceBase?: unknown }[], project: boolean): void => {
     for (const summary of summaries) {
       if (typeof summary.name !== 'string' || summary.name === '' || seen.has(summary.name)) continue;
       const description = typeof summary.description === 'string' ? summary.description : undefined;
       const source = typeof summary.source === 'string' ? summary.source : undefined;
+      const provider = typeof summary.provider === 'string' ? summary.provider : undefined;
       const base = summary.resourceBase;
       const rawPath = base !== null && typeof base === 'object' && (base as { kind?: unknown }).kind === 'directory'
         ? (base as { path?: unknown }).path
@@ -77,17 +78,25 @@ async function presetSkillRows(
       // A custom dir that lives inside a preset's own directory is that
       // preset's bundled skills — the settings page groups them under the
       // preset's name, exactly like the session panel.
-      const owner = source === 'custom' && rawRoot !== ''
+      const owner = source === 'custom' && provider === 'filesystem' && rawRoot !== ''
         ? presetDirs.find((p) => rawRoot === p.path || rawRoot.startsWith(`${p.path}/`))
         : undefined;
+      // Preset settings aggregate every Skill visible in the mounted scope.
+      // Keep distinct filesystem roots separate even when their runtime source
+      // is the same (notably packaged plugin skills versus Host Office skills).
+      const group = owner === undefined && rawRoot !== '' ? `path:${rawRoot}` : undefined;
+      // Older Clients group only by `source`. Give directory-backed rows the
+      // same stable synthetic key so they also separate distinct roots; newer
+      // Clients use the explicit `group` field and render the same result.
+      const displaySource = group ?? source;
       seen.set(summary.name, {
         name: summary.name,
         ...(description === undefined ? {} : { description }),
         enabled: !disabled.has(summary.name),
         ...(project ? { project: true } : {}),
-        ...(source === undefined ? {} : { source }),
+        ...(displaySource === undefined ? {} : { source: displaySource }),
         ...(path === undefined ? {} : { path }),
-        ...(owner === undefined ? {} : { group: `preset:${owner.key}` }),
+        ...(owner !== undefined ? { group: `preset:${owner.key}` } : group === undefined ? {} : { group }),
       });
     }
   };

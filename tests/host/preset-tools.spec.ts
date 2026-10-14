@@ -131,8 +131,9 @@ function fixture(options: FixtureOptions = {}) {
           : options.richSkills === true
             ? [
                 { name: 'writing', description: 'house style', source: 'user-agents', resourceBase: { kind: 'directory', path: '/agents/skills/writing' } },
-                { name: 'preset-skill', source: 'custom', resourceBase: { kind: 'directory', path: '/presets/alpha/skills/preset-skill' } },
-                { name: 'plain-custom', source: 'custom', resourceBase: { kind: 'directory', path: '/elsewhere/plain-custom' } },
+                { name: 'preset-skill', source: 'custom', provider: 'filesystem', resourceBase: { kind: 'directory', path: '/presets/alpha/skills/preset-skill' } },
+                { name: 'plugin-skill', source: 'custom', provider: 'dsh-actions', resourceBase: { kind: 'directory', path: '/presets/alpha/node_modules/dsh-actions/skills/dsh-actions-authoring' } },
+                { name: 'plain-custom', source: 'custom', provider: 'filesystem', resourceBase: { kind: 'directory', path: '/elsewhere/plain-custom' } },
                 { name: 'url-skill', source: 'runtime', resourceBase: { kind: 'url', url: 'https://x' } },
                 { name: 'empty-path', source: 'custom', resourceBase: { kind: 'directory', path: '' } },
               ]
@@ -488,13 +489,14 @@ describe('preset tool settings', () => {
     const skills = listed.presets[0]!.skills;
     const byName = new Map(skills.map((skill) => [skill.name, skill]));
     // A directory resourceBase yields the abbreviated discovery root.
-    expect(byName.get('writing')).toMatchObject({ source: 'user-agents', path: '/agents/skills' });
-    expect(byName.get('writing')).not.toHaveProperty('group');
+    expect(byName.get('writing')).toMatchObject({ source: 'path:/agents/skills', path: '/agents/skills', group: 'path:/agents/skills' });
     // A custom dir inside the preset's own directory groups under the preset.
     expect(byName.get('preset-skill')).toMatchObject({ source: 'custom', group: 'preset:Alpha', path: '/presets/alpha/skills' });
-    // A custom dir outside every preset keeps the plain custom grouping.
-    expect(byName.get('plain-custom')).toMatchObject({ source: 'custom', path: '/elsewhere' });
-    expect(byName.get('plain-custom')).not.toHaveProperty('group');
+    // A runtime plugin directory beneath the profile is only a preview base;
+    // it does not make the plugin's skill part of this preset group/count.
+    expect(byName.get('plugin-skill')).toMatchObject({ source: 'path:/presets/alpha/node_modules/dsh-actions/skills', path: '/presets/alpha/node_modules/dsh-actions/skills', group: 'path:/presets/alpha/node_modules/dsh-actions/skills' });
+    // A custom dir outside every preset keeps its own filesystem-root grouping.
+    expect(byName.get('plain-custom')).toMatchObject({ source: 'path:/elsewhere', path: '/elsewhere', group: 'path:/elsewhere' });
     // Non-directory resourceBase and empty paths carry no path at all.
     expect(byName.get('url-skill')).not.toHaveProperty('path');
     expect(byName.get('empty-path')).not.toHaveProperty('path');

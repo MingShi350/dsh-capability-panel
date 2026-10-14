@@ -145,18 +145,23 @@ export function PresetToolSection(props: PresetToolSectionProps): React.ReactEle
    */
   const sourceDivider = (
     groupKey: string,
-    items: readonly { path?: string }[],
+    items: readonly { path?: string; source?: string }[],
     first: boolean,
   ): React.ReactElement => {
     const presetName = groupKey.startsWith('preset:') ? groupKey.slice(7) : undefined;
+    const pathGroup = groupKey.startsWith('path:');
     const path = items.find((item) => item.path !== undefined)?.path;
     // Unknown or untranslated group keys display as-is, never the raw
     // `source.*` locale key (the session panel falls back the same way).
     const translated = t(`source.${groupKey}`);
     const fallbackLabel = translated === `source.${groupKey}` ? groupKey : translated;
-    const label = presetName ?? (path !== undefined ? ellipsizeMiddle(path) : groupKey === 'host' ? t('source.host') : fallbackLabel);
+    const label = presetName ?? (path !== undefined ? ellipsizeMiddle(path) : pathGroup ? groupKey.slice(5) : groupKey === 'host' ? t('source.host') : fallbackLabel);
+    // `path:` groups send their key verbatim: it carries the raw discovery
+    // root, and the route re-validates it against a fresh listing before
+    // opening — resolving by the row's coarse runtime source would open the
+    // first directory that shares it, not necessarily this one.
     const openSource = presetName ?? groupKey;
-    const openable = presetName !== undefined || SESSIONLESS_OPENABLE.has(groupKey);
+    const openable = presetName !== undefined || pathGroup || SESSIONLESS_OPENABLE.has(groupKey);
     const rule = (grow: boolean): React.ReactElement =>
       React.createElement('span', {
         style: grow

@@ -92,10 +92,26 @@ async function readAvailable(
     // preset's bundled skills (shipped presets register their skills/ via
     // customSkillDirs). Grouping is display-only; `source` stays the raw
     // runtime value so the open-folder route can still resolve by it.
-    const groupFor = (source: string, rawRoot: string): string | undefined => {
-      if (source !== 'custom' || rawRoot === '') return undefined;
-      const owner = presetDirs.find((p) => rawRoot === p.path || rawRoot.startsWith(`${p.path}/`));
-      return owner === undefined ? undefined : `preset:${owner.key}`;
+    const groupFor = (source: string, provider: string, rawRoot: string): string | undefined => {
+      if (rawRoot === '') return undefined;
+      // Only filesystem discovery roots belong to a preset directory. Runtime
+      // plugins can also expose a directory-valued resourceBase for previews
+      // (for example dsh-actions' packaged authoring skill); grouping those by
+      // an enclosing preset/profile path incorrectly assigns unrelated runtime
+      // skills to that preset and inflates its count.
+      if (source === 'custom' && provider === 'filesystem') {
+        const owner = presetDirs.find((p) => rawRoot === p.path || rawRoot.startsWith(`${p.path}/`));
+        if (owner !== undefined) return `preset:${owner.key}`;
+      }
+      // Every other directory-backed skill groups by its raw discovery root.
+      // `source` alone is too coarse a key: a plugin's packaged skill and the
+      // Host's bundled Office skills BOTH report source "bundled", so merging
+      // by source labeled one group's header with the other's directory (and
+      // the open-folder route resolved the same wrong first match). The raw
+      // root — never the abbreviated display path — keeps the key stable and
+      // lets the route validate it against a fresh listing before opening.
+      // Mirrors the preset settings view (preset-tools.ts).
+      return `path:${rawRoot}`;
     };
     for (const item of list) {
       if (typeof item.name !== 'string' || item.name === '') continue;
@@ -110,7 +126,7 @@ async function readAvailable(
         : '';
       const rawRoot = rawPath === '' ? '' : parentDir(rawPath);
       const path = rawRoot === '' ? '' : displayPath(rawRoot, cwd);
-      const group = groupFor(source, rawRoot);
+      const group = groupFor(source, provider, rawRoot);
       // The skill's instruction file, when the provider has one: what the
       // panel's preview entry shows in the Host's right sidebar. A virtual
       // skill reports no path, and then the entry is absent rather than broken.

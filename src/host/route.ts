@@ -215,6 +215,37 @@ export function createRouteHandler(
             }
           } catch { /* listing failed — fall through to the heuristic */ }
         }
+        // A `path:<root>` group key names its discovery root verbatim and is
+        // the ONLY source spelling that carries a client-supplied path. It
+        // opens solely after a fresh runtime listing confirms a skill still
+        // lives under that exact root — the string round-trips through the
+        // client, so without this check the route would be an
+        // arbitrary-folder opener.
+        if (folderPath === undefined && source.startsWith('path:')) {
+          const candidate = source.slice('path:'.length);
+          try {
+            const skills = services.get('skills', false);
+            const agent = sessionId === null ? undefined : services.get('agents', false)?.get(sessionId);
+            if (skills !== undefined) {
+              // Sessionless callers (the settings page) validate against what
+              // this workspace contributes, matching how that page lists.
+              const cwd = agent?.session?.header?.cwd ?? (sessionId === null ? process.cwd() : undefined);
+              const list = await skills.list({
+                ...(cwd === undefined ? {} : { cwd }),
+                ...(agent === undefined ? {} : { scope: agent }),
+              });
+              for (const item of list) {
+                const base = item.resourceBase;
+                if (base === null || typeof base !== 'object' || (base as { kind?: unknown }).kind !== 'directory') continue;
+                const itemPath = (base as { path?: unknown }).path;
+                if (typeof itemPath === 'string' && itemPath !== '' && parentDir(itemPath) === candidate) {
+                  folderPath = candidate;
+                  break;
+                }
+              }
+            }
+          } catch { /* validation listing failed — leave folderPath undefined */ }
+        }
         // Heuristic fallbacks for sources with no live skill entry, and for
         // MCP sources (which are preset names or 'host').
         if (folderPath === undefined && (source === 'user-dsh' || source === 'user-agents')) {

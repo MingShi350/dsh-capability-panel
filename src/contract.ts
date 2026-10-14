@@ -73,8 +73,15 @@ export interface SkillEntry {
   /**
    * Display grouping key, present only when it differs from `source`:
    * `preset:<name>` for skills a preset bundles through customSkillDirs
-   * (the runtime reports those as `custom`). Grouping is display-only —
-   * `source` keeps the raw runtime value for folder resolution.
+   * (the runtime reports those as `custom`), or `path:<root>` for every
+   * other directory-backed skill, keyed by the RAW (un-abbreviated)
+   * discovery root. `source` alone is too coarse — a plugin's packaged
+   * skill and the Host's bundled Office skills both report `bundled` —
+   * so same-source skills from different directories would merge into one
+   * group labeled with whichever directory came first. Grouping is
+   * display-only — `source` keeps the raw runtime value for folder
+   * resolution, and the open-folder route re-validates a `path:` key
+   * against a fresh listing before opening anything.
    */
   readonly group?: string;
 }

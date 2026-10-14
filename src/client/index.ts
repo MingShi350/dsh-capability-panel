@@ -394,7 +394,10 @@ export function apply(ctx: SlotContext): void {
        * (host-abbreviated `~`/cwd-relative, middle-ellipsized when long), and
        * only groups without a filesystem location fall back to the translated
        * source name. `groupKey` is the grouping identity; `rawSource` is what
-       * the open-folder route resolves by.
+       * the open-folder route resolves by — except `path:<root>` groups, whose
+       * key IS the raw discovery root: sending it lets the route open exactly
+       * this directory (re-validated against a fresh listing) instead of the
+       * first skill that happens to share the group's coarse runtime source.
        */
       const sourceSectionHeader = (groupKey: string, rawSource: string, count: number, first: boolean, path?: string, openable = false) => {
         const label = groupKey.startsWith('preset:')
@@ -402,6 +405,7 @@ export function apply(ctx: SlotContext): void {
           : path !== undefined
             ? ellipsizeMiddle(path)
             : groupKey === 'host' ? t('source.host') : skillSourceLabel({ source: groupKey } as SkillEntry);
+        const openKey = groupKey.startsWith('path:') ? groupKey : rawSource;
         const rule = (grow: boolean) => h('span', {
           style: grow
             ? { flex: '1', height: '1px', background: TOK.borderStrong }
@@ -434,7 +438,7 @@ export function apply(ctx: SlotContext): void {
                 cursor: openable ? 'pointer' : 'default',
               },
               title: openable ? t('source.openFolder', { source: path ?? label }) : undefined,
-              onClick: openable ? () => { openSourceFolder(rawSource); } : undefined,
+              onClick: openable ? () => { openSourceFolder(openKey); } : undefined,
             },
             openable
               ? h(
