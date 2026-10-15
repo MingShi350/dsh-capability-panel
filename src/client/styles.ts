@@ -62,12 +62,6 @@ export const PANEL_CSS = [
   '.ci-leading>.ci-chevron-hover{position:absolute;inset:0;margin:auto;display:grid;place-items:center;opacity:0;transition:opacity .12s var(--ds-ease-in-out,ease)}',
   '.ci-row-head:hover .ci-leading>.ci-row-icon,.ci-row-head:focus-within .ci-leading>.ci-row-icon{opacity:0}',
   '.ci-row-head:hover .ci-leading>.ci-chevron-hover,.ci-row-head:focus-within .ci-leading>.ci-chevron-hover{opacity:1}',
-  // Only the preset part header's filled grouping triangle rotates: that is the
-  // host's workspace-grouping glyph, which the host also turns a quarter turn
-  // rather than swapping. Disclosure rows swap the glyph itself (down closed,
-  // up open, the way the host's own DisclosureRow does), so they must NOT
-  // rotate — a rotated down-chevron would point sideways.
-  '.ci-preset-part-trigger[aria-expanded="true"] .ci-chevron svg{transform:rotate(90deg)}',
   // Track and active pill follow the host's SegmentedControl recipe: the track
   // is the same translucent fill as a hover state (it reads as a place, not a
   // button), and the one raised part is the active pill on an opaque layer-1
@@ -92,15 +86,6 @@ export const PANEL_CSS = [
   '.ci-search>svg{position:absolute;left:12px;pointer-events:none}',
   '.ci-preset-filter{width:100%;height:36px;box-sizing:border-box;padding:0 34px 0 36px;border:.5px solid var(--dsw-alias-border-l4,rgba(0,0,0,.16));border-radius:var(--dsw-radius-md,12px);background-color:var(--dsw-alias-bg-layer-1,#fff);color:var(--dsw-alias-label-primary,#0f1115);font:inherit;font-size:13px;font-weight:400;outline:none}',
   '.ci-preset-filter:focus-visible{border-color:var(--dsw-alias-state-business-primary,#4176e6);box-shadow:0 0 0 2px color-mix(in srgb,var(--dsw-alias-state-business-primary,#4176e6) 18%,transparent)}',
-  // Parts are collapsible groups now: hairline-separated (the inventory page's
-  // group+group rule), a chevron-led trigger row, title at regular weight, and
-  // a tabular count subtitle aligned under the title text.
-  '.ci-preset-part{display:flex;flex-direction:column;gap:10px;margin:0;padding:14px 0 0;border-top:.5px solid var(--dsw-alias-border-l2,rgba(0,0,0,.1))}',
-  '.ci-preset-part:first-of-type{border-top:0;padding-top:0}',
-  '.ci-preset-part-trigger{display:flex;align-items:center;gap:8px;min-height:32px;padding:0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer}',
-  '.ci-preset-part-trigger:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary,#4176e6);outline-offset:2px;border-radius:4px}',
-  '.ci-preset-part-title{margin:0;font-size:14px;font-weight:400;line-height:22px;color:var(--dsw-alias-label-primary,#0f1115)}',
-  '.ci-preset-part-sub{margin:-4px 0 0 26px;font-size:12px;line-height:18px;color:var(--dsw-alias-label-tertiary,#81858c);font-variant-numeric:tabular-nums}',
   // Badge fill: --dsw-alias-bg-fill-2 was deleted from the theme (already gone
   // in 0.1.6); the host's subtle-fill token is the hover-fill alias, which is
   // also what the SegmentedControl track uses. Theme-aware in dark mode, unlike
@@ -157,7 +142,7 @@ export const PANEL_CSS = [
   '.ci-cap-card-chevronbtn{flex:none;display:inline-grid;place-items:center;width:22px;height:22px;padding:0;border:0;border-radius:6px;background:none;color:var(--dsw-alias-label-tertiary,#81858c);cursor:pointer}',
   '.ci-cap-card-chevronbtn:hover{background:var(--dsw-alias-interactive-bg-hover,rgba(38,49,72,.06))}',
   '.ci-cap-card-chevron{transition:transform .14s var(--ds-ease-in-out,ease)}',
-  '.ci-cap-card[data-open=true] .ci-cap-card-chevron{transform:rotate(180deg)}',
+  '.ci-cap-card-chevronbtn[aria-expanded="true"] .ci-cap-card-chevron{transform:rotate(180deg)}',
   // The description previews clamped at two lines and simply unclamps while
   // the card is open — it never leaves the card.
   '.ci-cap-card-desc{margin:0;font-size:12px;line-height:18px;color:var(--dsw-alias-label-tertiary,#81858c);text-wrap:pretty;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}',

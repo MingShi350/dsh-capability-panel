@@ -10,7 +10,7 @@ All notable changes to this project will be documented here. The format follows 
 
 ### Changed
 
-- 「设置 → 能力面板」改为与宿主内置插件页一致的卡片交互：每个能力是一张卡片（固定双列网格、窗口窄于 520px 自动收单列），卡片头行是名称与常驻开关，尾部 chevron 旋转指示开合；描述以两行摘要常驻卡片，展开时原位取消截断，并在卡片底部的着色详情区给出事实信息（技能显示来源与目录、MCP 工具显示完整线名）。卡片采用宿主设置卡的专属填充/描边 token 与 xl 圆角，hover 时内容区底色变化而描边不动——观感与内置插件页逐项对齐。开关仍在卡片上常驻（编辑面不藏开关），各卡片独立展开互不影响；技能/MCP 的来源分组保留，分组分隔线横跨整行。设置页代码同步重整：原来 600 余行的单一巨型组件拆成了 SourceDivider、LeafCard、SkillCard、ToolCard、ServerCard、PartGroup、PresetPicker、KindTabs 等职责单一的组件。
+- 「设置 → 能力面板」改为与宿主内置插件页一致的卡片交互：每个能力是一张卡片（固定双列网格、窗口窄于 520px 自动收单列），卡片头行是名称与常驻开关，尾部 chevron 旋转指示开合；描述以两行摘要常驻卡片，展开时原位取消截断，并在卡片底部的着色详情区给出事实信息（技能显示来源与目录、MCP 工具显示完整线名）。卡片采用宿主设置卡的专属填充/描边 token 与 xl 圆角，hover 时内容区底色变化而描边不动——观感与内置插件页逐项对齐。开关仍在卡片上常驻（编辑面不藏开关），各卡片独立展开互不影响；类别切换只由顶部分段控件负责，**去掉了下方重复的可折叠分组头**，「全部」视图里技能 → MCP → 系统工具按序平铺，来源分组分隔线保留并横跨整行。设置页代码同步重整：原来 600 余行的单一巨型组件拆成了 SourceDivider、LeafCard、SkillCard、ToolCard、ServerCard、PresetPicker、KindTabs 等职责单一的组件。
 
 ### Fixed
 

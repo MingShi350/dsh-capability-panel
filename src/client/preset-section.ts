@@ -7,7 +7,7 @@ import { Tabs } from '@base-ui/react/tabs';
 import { Menu } from '@deepseek-ai/dsh-client-ui-primitives';
 import * as primitives from '@deepseek-ai/dsh-client-ui-primitives';
 // Icon names differ across host generations; icons.ts resolves whichever exists.
-import { IconChevronDown, IconFolderClose, IconRefresh, IconSearch, IconTriangleRight } from './icons.js';
+import { IconChevronDown, IconFolderClose, IconRefresh, IconSearch } from './icons.js';
 import { resolveDisclosure } from './disclosure.js';
 import { disclosureRow } from './disclosure-row.js';
 import { toolRowIcon } from './row-icon.js';
@@ -580,36 +580,6 @@ function ServerCard(props: {
 }
 
 /**
- * One collapsible part (skills / MCP / system tools): a chevron-led trigger
- * row with a tabular count subtitle, hairline-separated parts. Defaults
- * open — this is an editing surface, and hiding the toggles behind a click
- * would only add friction; a text filter forces every part open so matched
- * cards stay visible.
- */
-function PartGroup(props: {
-  readonly title: string;
-  readonly shown: number;
-  readonly total: number;
-  readonly open: boolean;
-  readonly onOpenChange: (open: boolean) => void;
-  readonly t: Translate;
-  readonly children?: React.ReactNode;
-}): React.ReactElement {
-  return React.createElement(
-    Collapsible.Root,
-    { className: 'ci-preset-part', open: props.open, onOpenChange: props.onOpenChange },
-    React.createElement(
-      Collapsible.Trigger,
-      { className: 'ci-preset-part-trigger' },
-      React.createElement(IconTriangleRight, { size: 14 }),
-      React.createElement('h3', { className: 'ci-preset-part-title' }, props.title),
-    ),
-    React.createElement('p', { className: 'ci-preset-part-sub' }, props.t('group.count', { shown: props.shown, total: props.total })),
-    React.createElement(Collapsible.Panel, { className: 'ci-collapse' }, props.children),
-  );
-}
-
-/**
  * The preset switcher: the host's own preset-mode pill (a module-platform
  * button carrying the current value and a chevron). Menu owns the popup —
  * a native <select> cannot follow --dsw-* tokens.
@@ -708,12 +678,13 @@ function KindTabs(props: {
 
 /**
  * Settings-side twin of the composer panel, laid out as the host plugin
- * inventory page is: a filter row with the preset picker, a kind switcher,
- * then collapsible parts of capability CARDS — one framed box per entry
- * with its switch on the head row, a clamped description preview, and the
- * full text on expand. Source grouping stays: two scopes of one feature
- * should not feel like two unrelated features, and "where does this come
- * from" is half of what this page answers.
+ * inventory page is: a filter row with the preset picker, a kind switcher
+ * that owns category filtering and counts, then capability CARDS in one
+ * flow — one framed box per entry with its switch on the head row, a
+ * clamped description preview, and the full text on expand. Source
+ * grouping stays: two scopes of one feature should not feel like two
+ * unrelated features, and "where does this come from" is half of what
+ * this page answers.
  */
 export function PresetToolSection(props: PresetToolSectionProps): React.ReactElement {
   const { t } = props;
@@ -722,7 +693,6 @@ export function PresetToolSection(props: PresetToolSectionProps): React.ReactEle
   React.useEffect(() => { void loadPresetTools(); }, []);
   const [query, setQuery] = React.useState('');
   const [expanded, setExpanded] = React.useState<Record<string, boolean>>({});
-  const [partOpen, setPartOpen] = React.useState<Record<string, boolean>>({});
   const [kind, setKind] = React.useState<SegmentedKind>('all');
   // The preset picker's popup is owner-controlled like every Menu consumer.
   const [pickerOpen, setPickerOpen] = React.useState(false);
@@ -756,44 +726,19 @@ export function PresetToolSection(props: PresetToolSectionProps): React.ReactEle
     if (view.total === 0) {
       return React.createElement('p', null, filtering ? t('empty.match') : t('preset.noTools'));
     }
-    // The same three parts the composer panel uses, with the same labels
-    // and the same shown/total counts. They are three because they are
-    // three different things: skills and MCP servers both come from
-    // outside the preset (the user's skills roots and the host
-    // composition), while system tools are what the preset itself carries.
-    const totals = {
-      skills: selected.skills.length,
-      mcp: selected.mcp.length,
-      systemTools: selected.systemTools.length,
-    };
-    const parts: React.ReactElement[] = [];
-    const part = (
-      key: 'skills' | 'mcp' | 'system',
-      title: string,
-      cards: readonly React.ReactElement[],
-      total: number,
-      shown: number,
-    ): void => {
+    // Three categories in one flow, sequenced skills → MCP → system tools:
+    // the kind switcher above already owns category filtering and counts,
+    // so a second collapsible layer would only repeat it. Skills and MCP
+    // keep their source dividers; system tools are one uniform tail.
+    const grids: React.ReactElement[] = [];
+    const grid = (key: 'skills' | 'mcp' | 'system', cards: readonly React.ReactElement[]): void => {
       if (kind !== 'all' && kind !== key) return;
       if (cards.length === 0) return;
-      parts.push(React.createElement(
-        PartGroup,
-        {
-          key,
-          title,
-          shown,
-          total,
-          t,
-          open: filtering || (partOpen[key] ?? true),
-          onOpenChange: (next: boolean) => { setPartOpen((prev) => ({ ...prev, [key]: next })); },
-        },
-        React.createElement('ul', { className: 'ci-cap-cards' }, ...cards),
-      ));
+      grids.push(React.createElement('ul', { key, className: 'ci-cap-cards' }, ...cards));
     };
 
-    part(
+    grid(
       'skills',
-      t('tab.skills'),
       groupBy(view.skills, (skill) => skill.group ?? skill.source ?? 'unknown').flatMap(([groupKey, items], i) => [
         React.createElement(SourceDivider, { key: `source:${groupKey}`, t, groupKey, items, first: i === 0 }),
         ...items.map((skill) =>
@@ -810,12 +755,9 @@ export function PresetToolSection(props: PresetToolSectionProps): React.ReactEle
           }),
         ),
       ]),
-      totals.skills,
-      view.skills.length,
     );
-    part(
+    grid(
       'mcp',
-      t('tab.mcp'),
       groupBy(view.mcp, (server) => server.source === undefined || server.source === 'host' ? 'host' : `preset:${server.source}`).flatMap(([groupKey, items], i) => [
         React.createElement(SourceDivider, { key: `source:${groupKey}`, t, groupKey, items, first: i === 0 }),
         ...items.map((server) =>
@@ -837,12 +779,9 @@ export function PresetToolSection(props: PresetToolSectionProps): React.ReactEle
           }),
         ),
       ]),
-      totals.mcp,
-      view.mcp.length,
     );
-    part(
+    grid(
       'system',
-      t('group.systemTools'),
       view.systemTools.map((tool) =>
         React.createElement(ToolCard, {
           key: tool.name,
@@ -857,15 +796,13 @@ export function PresetToolSection(props: PresetToolSectionProps): React.ReactEle
           onOpenChange: (open) => { setRowOpen(`tool:${tool.name}`, open); },
         }),
       ),
-      totals.systemTools,
-      view.systemTools.length,
     );
     // Narrowing to a category that this preset has nothing in is a normal
     // outcome, not an error: say so rather than render an empty panel.
-    if (parts.length === 0) {
+    if (grids.length === 0) {
       return React.createElement('p', null, filtering ? t('empty.match') : t('preset.noTools'));
     }
-    return React.createElement(React.Fragment, null, ...parts);
+    return React.createElement(React.Fragment, null, ...grids);
   };
 
   return React.createElement(
