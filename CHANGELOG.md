@@ -8,6 +8,10 @@ All notable changes to this project will be documented here. The format follows 
 
 ## [Unreleased]
 
+### Changed
+
+- 「设置 → 能力面板」改为与宿主内置插件页一致的卡片交互：每个能力是一张带边框的卡片（自适应网格，窗口变窄自动收成单列），名称与开关在卡片头行，描述以两行摘要常显，点卡片展开查看完整文本——原来需要逐行点箭头才能看到的描述现在一眼可扫。开关仍在卡片上常驻（编辑面不藏开关），各卡片独立展开互不影响；技能/MCP 的来源分组保留，分组分隔线横跨整行。设置页代码同步重整：原来 600 余行的单一巨型组件拆成了 SourceDivider、LeafCard、SkillCard、ToolCard、ServerCard、PartGroup、PresetPicker、KindTabs 等职责单一的组件。
+
 ### Fixed
 
 - 「全局配置」入口在 0.2 宿主上恢复可用：此前它合成 `settings.open` 的键盘快捷键来打开设置，而 0.2 的桌面窗口把可配置快捷键全部交给原生键盘桥处理、直接丢弃合成的 DOM 按键事件（`native` 分支提前返回），Web 侧的默认绑定又改成了 primary+alt+,——两条路都走不通，点了没反应。现在改为点击宿主自己的设置触发按钮（包裹 `settings.trigger` 插槽的那个 `<button>`），与真实用户点击走同一条打开路径，桌面与 Web 通吃；合成快捷键仅作找不到触发按钮时的兜底（并按 0.2 的绑定表补上了 Web 侧缺的 alt 修饰键）。

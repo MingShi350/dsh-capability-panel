@@ -133,6 +133,25 @@ export const PANEL_CSS = [
   // with the rows that have one.
   '.ci-preset-spacer{width:18px;flex:none}',
   '.ci-preset-detail{padding:0 0 10px 24px;color:var(--dsw-alias-label-tertiary,#81858c);line-height:18px;overflow-wrap:anywhere}',
+  // Capability cards — the host plugin-inventory page's recipe: a responsive
+  // grid of framed boxes (auto-fill so the grid collapses to one column on a
+  // narrow settings window), name+switch on the head row, and a clamped
+  // two-line description preview that expanding swaps for the full text.
+  // Source dividers span the whole grid width, exactly like full-width rows
+  // in a list.
+  '.ci-cap-cards{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:8px;align-items:start}',
+  '.ci-cap-cards>.ci-source-divider{grid-column:1/-1}',
+  '.ci-cap-card{display:flex;flex-direction:column;border:.5px solid var(--dsw-alias-border-l2,rgba(0,0,0,.1));border-radius:10px;padding:2px 10px 8px;background:var(--dsw-alias-bg-layer-1,#fff);transition:border-color .12s var(--ds-ease-in-out,ease)}',
+  '.ci-cap-card:hover{border-color:var(--dsw-alias-border-l4,rgba(0,0,0,.16))}',
+  // The head row inside a card keeps its padding but loses the list-row
+  // bleed: a list row pulls its hover background 8px past the text on both
+  // sides, which inside a framed card would paint over the border.
+  '.ci-cap-card-head{margin:0;padding:6px 0}',
+  '.ci-cap-card-desc{margin:0 0 2px 26px;font-size:12px;line-height:18px;color:var(--dsw-alias-label-tertiary,#81858c);overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}',
+  // Expanded, the preview gives way to the full text inside the panel —
+  // never both at once.
+  '.ci-cap-card-open .ci-cap-card-desc{display:none}',
+  '.ci-cap-card-detail{margin:0 0 2px 26px;padding-top:2px;font-size:12px;line-height:18px;color:var(--dsw-alias-label-tertiary,#81858c);overflow-wrap:anywhere}',
   '.ci-preset-kinds{margin:0}',
   '.ci-preset-kinds .ci-tabs{display:inline-flex}',
   '.ci-preset-kinds .ci-tab{flex:0 0 auto;padding:0 12px}',
