@@ -91,6 +91,9 @@ export const zh: Record<string, string> = {
   'source.host': '全局',
   'source.preset': '预设',
   'source.openFolder': '在文件管理器中打开 {source}',
+  'card.source': '来源',
+  'card.path': '目录',
+  'card.name': '名称',
 };
 
 export const en: Record<string, string> = {
@@ -171,6 +174,9 @@ export const en: Record<string, string> = {
   'source.host': 'global',
   'source.preset': 'preset',
   'source.openFolder': 'Open {source} in file manager',
+  'card.source': 'Source',
+  'card.path': 'Directory',
+  'card.name': 'Name',
 };
 
 /**

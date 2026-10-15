@@ -104,22 +104,6 @@ describe('disclosureRow', () => {
     expect(find(header, (el) => el.type === 'button' && el.props['children'] === 'switch')).toBeDefined();
   });
 
-  it('renders the summary between the header and the panel when there is detail', () => {
-    const summary = React.createElement('p', { className: 'test-summary' }, 'preview');
-    const row = disclosureRow({ ...base, summary, detail: 'writes things' });
-    const rendered = find(row, (el) => el.props['className'] === 'test-summary');
-    expect(rendered).toBeDefined();
-    // The summary stays outside the trigger: it previews, it never toggles.
-    const trigger = find(row, (el) => el.props['className'] === 'ci-disclosure-trigger');
-    expect(find(trigger, (el) => el.props['className'] === 'test-summary')).toBeUndefined();
-  });
-
-  it('renders the summary even when the row has no detail', () => {
-    const row = disclosureRow({ ...base, summary: React.createElement('p', { className: 'test-summary' }, 'preview') });
-    expect(find(row, (el) => el.props['className'] === 'test-summary')).toBeDefined();
-    expect(find(row, (el) => el.props['className'] === 'ci-disclosure-trigger')).toBeUndefined();
-  });
-
   // A disabled row is dimmed by its caller, and that has to survive both
   // shapes: the detail-less branch builds its own root element.
   it('passes an optional style through to the row root, with or without detail', () => {

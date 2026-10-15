@@ -9,8 +9,8 @@ import * as primitives from '@deepseek-ai/dsh-client-ui-primitives';
 // Icon names differ across host generations; icons.ts resolves whichever exists.
 import { IconChevronDown, IconFolderClose, IconRefresh, IconSearch, IconTriangleRight } from './icons.js';
 import { resolveDisclosure } from './disclosure.js';
-import { disclosureRow, leadingFor } from './disclosure-row.js';
-import { serverRowIcon, skillRowIcon, toolRowIcon } from './row-icon.js';
+import { disclosureRow } from './disclosure-row.js';
+import { toolRowIcon } from './row-icon.js';
 import { capabilitySwitch } from './switch.js';
 import { filterPreset } from './preset-filter.js';
 import type { FilteredPreset } from './preset-filter.js';
@@ -191,25 +191,33 @@ function CapabilitySwitch(props: {
   });
 }
 
+/** One row of the details footer's fact grid, the host plugin card's dt/dd. */
+interface CardFact {
+  readonly label: string;
+  readonly value: React.ReactNode;
+}
+
 /**
- * One capability card — the host plugin-inventory page's interaction: a
- * framed box with the name and switch on the head row and a clamped
- * two-line description preview. Expanding swaps the preview for the full
- * text; a card with no description has nothing to reveal and renders no
- * chevron at all. The switch stays OUTSIDE the expand trigger so the two
- * gestures never compete.
+ * One capability card, measured off the host's plugin-inventory card: a
+ * framed box whose head row carries the title (medium weight, ellipsis)
+ * and a trailing cluster — switch first, then a chevron that ROTATES on
+ * open. The description previews clamped at two lines and simply unclamps
+ * while the card is open; the details footer is a tinted panel of facts.
+ * The switch stays OUTSIDE the expand gesture so the two never compete.
  *
- * `framed: false` renders the same content as a plain row — nested tools
- * inside a server card, where boxes-in-boxes would just be noise.
+ * `framed: false` renders the same content as a plain disclosure row —
+ * nested tools inside a server card, where boxes-in-boxes would be noise.
  */
 function LeafCard(props: {
   /** Stable identity for both the React key and the expanded-state map. */
   readonly rowKey: string;
-  readonly icon: React.ReactNode;
+  /** Leading glyph — used only by the plain nested row (`framed: false`). */
+  readonly icon?: React.ReactNode;
   readonly name: string;
   /** Extra node rendered right after the name (e.g. the project badge). */
   readonly badge?: React.ReactNode;
   readonly description?: string | undefined;
+  readonly facts?: readonly CardFact[] | undefined;
   readonly toggle: React.ReactNode;
   readonly expanded: boolean;
   readonly filtering: boolean;
@@ -220,33 +228,119 @@ function LeafCard(props: {
   const { rowKey, description } = props;
   const framed = props.framed !== false;
   const disclosure = resolveDisclosure(props.expanded, props.filtering);
+  if (!framed) {
+    return React.createElement(
+      'li',
+      { className: 'ci-toolrow ci-preset-item' },
+      disclosureRow({
+        rowKey,
+        expanded: props.expanded,
+        filtering: props.filtering,
+        onOpenChange: props.onOpenChange,
+        triggerLabel: detailAria(props.t, props.name, disclosure.open, disclosure.disabled),
+        className: 'ci-preset-disclosure',
+        headerClassName: 'ci-row-head ci-preset-tool-row',
+        spacerClassName: 'ci-preset-spacer',
+        icon: props.icon,
+        heading: React.createElement('span', { className: 'ci-preset-tool-name' }, props.name, props.badge),
+        actions: [props.toggle],
+        detail: description === undefined
+          ? undefined
+          : React.createElement('div', { className: 'ci-preset-detail' }, description),
+      }),
+    );
+  }
+  const facts = props.facts ?? [];
+  const expandable = description !== undefined || facts.length > 0;
+  const title = React.createElement('strong', { className: 'ci-cap-card-title' }, props.name, props.badge);
+  if (!expandable) {
+    // Nothing to reveal: a static card, no chevron anywhere.
+    return React.createElement(
+      'li',
+      { className: 'ci-preset-item ci-cap-card' },
+      React.createElement(
+        'div',
+        { className: 'ci-cap-card-content' },
+        React.createElement(
+          'div',
+          { className: 'ci-cap-card-main' },
+          React.createElement('strong', { className: 'ci-cap-card-title ci-cap-card-title-static' }, props.name, props.badge),
+          React.createElement('span', { className: 'ci-cap-card-trailing' }, props.toggle),
+        ),
+      ),
+    );
+  }
+  const aria = detailAria(props.t, props.name, disclosure.open, disclosure.disabled);
+  const detailId = `ci-detail-${encodeURIComponent(rowKey)}`;
   return React.createElement(
     'li',
-    {
-      className: framed
-        ? `ci-preset-item ci-cap-card${disclosure.open ? ' ci-cap-card-open' : ''}`
-        : 'ci-toolrow ci-preset-item',
-    },
-    disclosureRow({
-      rowKey,
-      expanded: props.expanded,
-      filtering: props.filtering,
-      onOpenChange: props.onOpenChange,
-      triggerLabel: detailAria(props.t, props.name, disclosure.open, disclosure.disabled),
-      className: 'ci-preset-disclosure',
-      headerClassName: framed ? 'ci-row-head ci-cap-card-head' : 'ci-row-head ci-preset-tool-row',
-      spacerClassName: 'ci-preset-spacer',
-      icon: props.icon,
-      heading: React.createElement('span', { className: 'ci-preset-tool-name' }, props.name, props.badge),
-      actions: [props.toggle],
-      summary: framed && description !== undefined
-        ? React.createElement('p', { className: 'ci-cap-card-desc' }, description)
-        : undefined,
-      detail: description === undefined
-        ? undefined
-        : React.createElement('div', { className: framed ? 'ci-cap-card-detail' : 'ci-preset-detail' }, description),
-    }),
+    { className: 'ci-preset-item ci-cap-card', ...(disclosure.open ? { 'data-open': 'true' } : {}) },
+    React.createElement(
+      Collapsible.Root,
+      { open: disclosure.open, onOpenChange: props.onOpenChange },
+      React.createElement(
+        'div',
+        { className: 'ci-cap-card-content' },
+        React.createElement(
+          'div',
+          { className: 'ci-cap-card-main' },
+          React.createElement(
+            Collapsible.Trigger,
+            { className: 'ci-cap-card-expand', disabled: disclosure.disabled, 'aria-label': aria },
+            title,
+          ),
+          React.createElement(
+            'span',
+            { className: 'ci-cap-card-trailing' },
+            props.toggle,
+            React.createElement(
+              'button',
+              {
+                type: 'button',
+                className: 'ci-cap-card-chevronbtn',
+                'aria-expanded': disclosure.open,
+                'aria-controls': detailId,
+                'aria-label': aria,
+                disabled: disclosure.disabled,
+                onClick: () => { props.onOpenChange(!disclosure.open); },
+              },
+              React.createElement('span', { className: 'ci-cap-card-chevron', 'aria-hidden': true }, React.createElement(IconChevronDown, { size: 14 })),
+            ),
+          ),
+        ),
+        description === undefined ? null : React.createElement('span', { className: 'ci-cap-card-desc' }, description),
+      ),
+      facts.length === 0
+        ? null
+        : React.createElement(
+          Collapsible.Panel,
+          { className: 'ci-collapse', id: detailId },
+          React.createElement(
+            'div',
+            { className: 'ci-cap-card-details' },
+            React.createElement(
+              'dl',
+              { className: 'ci-cap-facts' },
+              ...facts.map((fact) =>
+                React.createElement(
+                  'div',
+                  { key: fact.label },
+                  React.createElement('dt', null, fact.label),
+                  React.createElement('dd', null, fact.value),
+                ),
+              ),
+            ),
+          ),
+        ),
+    ),
   );
+}
+
+/** The translated source label, falling back to the raw runtime value. */
+function sourceLabel(t: Translate, source: string): string {
+  const key = `source.${source}`;
+  const translated = t(key);
+  return translated === key ? source : translated;
 }
 
 function SkillCard(props: {
@@ -260,9 +354,12 @@ function SkillCard(props: {
   readonly onOpenChange: (open: boolean) => void;
 }): React.ReactElement {
   const { t, skill } = props;
+  const facts: CardFact[] = [
+    ...(skill.source === undefined ? [] : [{ label: t('card.source'), value: sourceLabel(t, skill.source) }]),
+    ...(skill.path === undefined ? [] : [{ label: t('card.path'), value: skill.path }]),
+  ];
   return React.createElement(LeafCard, {
     rowKey: `skill:${skill.name}`,
-    icon: skillRowIcon(),
     name: skill.name,
     // A project skill is real but conditional: it exists because THIS
     // workspace supplies it, and a session opened elsewhere will not see
@@ -271,6 +368,7 @@ function SkillCard(props: {
       ? React.createElement('span', { className: 'ci-preset-badge' }, t('preset.projectSkill'))
       : undefined,
     description: skill.description,
+    facts,
     toggle: React.createElement(CapabilitySwitch, {
       on: skill.enabled,
       frozen: false,
@@ -300,11 +398,18 @@ function ToolCard(props: {
   readonly onOpenChange: (open: boolean) => void;
 }): React.ReactElement {
   const { t, tool } = props;
+  // The full wire name only adds information when it differs from the
+  // label — MCP tools carry `mcp__server__tool` while their label is the
+  // short name; system tools read the same either way.
+  const facts: CardFact[] = tool.name === tool.label
+    ? []
+    : [{ label: t('card.name'), value: React.createElement('code', null, tool.name) }];
   return React.createElement(LeafCard, {
     rowKey: `tool:${tool.name}`,
     icon: toolRowIcon(),
     name: tool.label,
     description: tool.description,
+    facts,
     toggle: React.createElement(CapabilitySwitch, {
       on: tool.enabled,
       frozen: tool.reserved === true,
@@ -340,91 +445,135 @@ function ServerCard(props: {
 }): React.ReactElement {
   const { t, server, reconnecting } = props;
   const disclosure = resolveDisclosure(props.expanded, props.filtering);
+  const aria = detailAria(t, server.server, disclosure.open, disclosure.disabled);
+  const detailId = `ci-detail-${encodeURIComponent(server.server)}`;
+  // While the server is down there is no name to store a toggle
+  // for: report the state and offer the one action that can still
+  // change it. Reconnectable servers get a manual pull-up that does
+  // not wait out the client's reconnect backoff.
+  const trailing = [
+    server.unavailable === true
+      ? React.createElement(
+        'span',
+        { key: 'state', className: 'ci-preset-badge', title: t('server.unavailableHint') },
+        t('server.unavailable'),
+      )
+      : React.createElement(CapabilitySwitch, {
+        key: 'switch',
+        on: server.enabled,
+        frozen: false,
+        locked: props.locked,
+        busy: props.busy,
+        label: t(server.enabled ? 'action.disable' : 'action.enable', { name: server.server }),
+        onChange: (checked) => { void setPresetServer(props.presetId, server.server, checked); },
+      }),
+    server.unavailable === true && server.reconnectable === true
+      ? React.createElement(
+        'button',
+        {
+          key: 'reconnect',
+          type: 'button',
+          className: `ci-reconnect${reconnecting ? ' ci-reconnect-busy' : ''}`,
+          disabled: props.reconnectBlocked,
+          title: reconnecting
+            ? t('action.reload.ing', { name: server.server })
+            : `${t('action.reload', { name: server.server })}\n${t('action.reloadHint')}`,
+          'aria-label': t('action.reload', { name: server.server }),
+          onClick: () => { if (!props.reconnectBlocked) props.onReconnect(server.server); },
+        },
+        React.createElement('span', { className: 'ci-reconnect-glyph', 'aria-hidden': true }, React.createElement(IconRefresh, { size: 14 })),
+        t('action.reload.label'),
+      )
+      : null,
+  ];
+  const title = React.createElement('strong', { className: 'ci-cap-card-title' }, server.server);
+  // Nothing is registered, so a tool count would be a lie: the
+  // listed rows are this preset's stored default, not a roster.
+  const count = server.unavailable === true
+    ? null
+    : React.createElement(
+      'span',
+      { className: 'ci-cap-card-desc' },
+      server.tools.length === 1 ? t('server.tool.one') : t('server.tools', { count: server.tools.length }),
+    );
+  const nestedTools = React.createElement(
+    'ul',
+    { className: 'ci-preset-tool-list' },
+    ...server.tools.map((tool) =>
+      React.createElement(ToolCard, {
+        key: tool.name,
+        t,
+        tool,
+        presetId: props.presetId,
+        nested: true,
+        expanded: props.toolExpanded(`tool:${tool.name}`),
+        filtering: props.filtering,
+        locked: props.locked,
+        busy: props.busy,
+        onOpenChange: (open) => { props.onToolOpenChange(`tool:${tool.name}`, open); },
+      }),
+    ),
+  );
+  if (server.tools.length === 0) {
+    // Nothing to reveal: a static card, no chevron anywhere.
+    return React.createElement(
+      'li',
+      { className: 'ci-preset-item ci-preset-group ci-cap-card' },
+      React.createElement(
+        'div',
+        { className: 'ci-cap-card-content' },
+        React.createElement(
+          'div',
+          { className: 'ci-cap-card-main' },
+          React.createElement('strong', { className: 'ci-cap-card-title ci-cap-card-title-static' }, server.server),
+          React.createElement('span', { className: 'ci-cap-card-trailing' }, ...trailing),
+        ),
+        count,
+      ),
+    );
+  }
   return React.createElement(
     'li',
-    { className: `ci-preset-item ci-preset-group ci-cap-card${disclosure.open ? ' ci-cap-card-open' : ''}` },
+    { className: 'ci-preset-item ci-preset-group ci-cap-card', ...(disclosure.open ? { 'data-open': 'true' } : {}) },
     React.createElement(
       Collapsible.Root,
       { open: disclosure.open, onOpenChange: props.onOpenChange },
       React.createElement(
         'div',
-        { className: 'ci-row-head ci-cap-card-head' },
+        { className: 'ci-cap-card-content' },
         React.createElement(
-          Collapsible.Trigger,
-          { className: 'ci-disclosure-trigger ci-preset-server-trigger', disabled: disclosure.disabled },
-          leadingFor(serverRowIcon(), disclosure.open),
+          'div',
+          { className: 'ci-cap-card-main' },
+          React.createElement(
+            Collapsible.Trigger,
+            { className: 'ci-cap-card-expand', disabled: disclosure.disabled, 'aria-label': aria },
+            title,
+          ),
           React.createElement(
             'span',
-            { className: 'ci-preset-tool-copy' },
-            React.createElement('span', { className: 'ci-preset-tool-name' }, server.server),
-            // Nothing is registered, so a tool count would be a lie: the
-            // listed rows are this preset's stored default, not a roster.
-            server.unavailable === true
-              ? null
-              : React.createElement(
-                'span',
-                { className: 'ci-preset-tool-description' },
-                server.tools.length === 1 ? t('server.tool.one') : t('server.tools', { count: server.tools.length }),
-              ),
+            { className: 'ci-cap-card-trailing' },
+            ...trailing,
+            React.createElement(
+              'button',
+              {
+                type: 'button',
+                className: 'ci-cap-card-chevronbtn',
+                'aria-expanded': disclosure.open,
+                'aria-controls': detailId,
+                'aria-label': aria,
+                disabled: disclosure.disabled,
+                onClick: () => { props.onOpenChange(!disclosure.open); },
+              },
+              React.createElement('span', { className: 'ci-cap-card-chevron', 'aria-hidden': true }, React.createElement(IconChevronDown, { size: 14 })),
+            ),
           ),
         ),
-        // While the server is down there is no name to store a toggle
-        // for: report the state and offer the one action that can still
-        // change it. Reconnectable servers get a manual pull-up that does
-        // not wait out the client's reconnect backoff.
-        server.unavailable === true
-          ? React.createElement(
-            'span',
-            { className: 'ci-preset-badge', title: t('server.unavailableHint') },
-            t('server.unavailable'),
-          )
-          : React.createElement(CapabilitySwitch, {
-            on: server.enabled,
-            frozen: false,
-            locked: props.locked,
-            busy: props.busy,
-            label: t(server.enabled ? 'action.disable' : 'action.enable', { name: server.server }),
-            onChange: (checked) => { void setPresetServer(props.presetId, server.server, checked); },
-          }),
-        server.unavailable === true && server.reconnectable === true
-          ? React.createElement(
-            'button',
-            {
-              type: 'button',
-              className: `ci-reconnect${reconnecting ? ' ci-reconnect-busy' : ''}`,
-              disabled: props.reconnectBlocked,
-              title: reconnecting
-                ? t('action.reload.ing', { name: server.server })
-                : `${t('action.reload', { name: server.server })}\n${t('action.reloadHint')}`,
-              'aria-label': t('action.reload', { name: server.server }),
-              onClick: () => { if (!props.reconnectBlocked) props.onReconnect(server.server); },
-            },
-            React.createElement('span', { className: 'ci-reconnect-glyph', 'aria-hidden': true }, React.createElement(IconRefresh, { size: 14 })),
-            t('action.reload.label'),
-          )
-          : null,
+        count,
       ),
       React.createElement(
         Collapsible.Panel,
-        { className: 'ci-collapse' },
-        React.createElement(
-          'ul',
-          { className: 'ci-preset-tool-list' },
-          ...server.tools.map((tool) =>
-            React.createElement(ToolCard, {
-              key: tool.name,
-              t,
-              tool,
-              presetId: props.presetId,
-              nested: true,
-              expanded: props.toolExpanded(`tool:${tool.name}`),
-              filtering: props.filtering,
-              locked: props.locked,
-              busy: props.busy,
-              onOpenChange: (open) => { props.onToolOpenChange(`tool:${tool.name}`, open); },
-            }),
-          ),
-        ),
+        { className: 'ci-collapse', id: detailId },
+        React.createElement('div', { className: 'ci-cap-card-details' }, nestedTools),
       ),
     ),
   );

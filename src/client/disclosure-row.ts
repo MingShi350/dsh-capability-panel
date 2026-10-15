@@ -65,13 +65,6 @@ export interface DisclosureRowOptions {
   readonly icon?: React.ReactNode;
   /** Rendered after the trigger, outside it: switches, chips, buttons. */
   readonly actions: readonly React.ReactNode[];
-  /**
-   * Always-visible content between the header and the collapsible panel —
-   * the card layout's clamped description preview. Not part of the trigger,
-   * so it never steals the row's expand click, and rendered whether or not
-   * the row has detail to reveal.
-   */
-  readonly summary?: React.ReactNode;
   /** The revealed content. Absent means there is nothing to reveal. */
   readonly detail?: React.ReactNode;
   readonly style?: React.CSSProperties;
@@ -139,7 +132,6 @@ export function disclosureRow(options: DisclosureRowOptions): React.ReactElement
         options.heading,
         ...options.actions,
       ),
-      options.summary,
     );
   }
   const disclosure = resolveDisclosure(options.expanded, options.filtering);
@@ -166,7 +158,6 @@ export function disclosureRow(options: DisclosureRowOptions): React.ReactElement
       ),
       ...options.actions,
     ),
-    options.summary,
     React.createElement(Collapsible.Panel, { className: 'ci-collapse' }, options.detail),
   );
 }

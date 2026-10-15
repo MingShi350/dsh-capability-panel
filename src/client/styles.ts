@@ -79,7 +79,8 @@ export const PANEL_CSS = [
   '.ci-tab[data-active]{background:var(--dsw-alias-bg-layer-1,#fff);color:var(--dsw-alias-label-primary,#0f1115);box-shadow:var(--dsw-elevation-soft,0 1px 2px rgba(0,0,0,.08))}',
   // Settings page frame follows the host's plugin-inventory page: a 760px
   // column with 14px gaps (measured from its CSS module), primary text on top.
-  '.ci-preset-section{width:100%;max-width:760px;color:var(--dsw-alias-label-primary,#0f1115);display:flex;flex-direction:column;gap:14px}',
+  // It is also the width container the card grid's collapse query reads.
+  '.ci-preset-section{width:100%;max-width:760px;color:var(--dsw-alias-label-primary,#0f1115);display:flex;flex-direction:column;gap:14px;container:ci-preset/inline-size}',
   '.ci-settings-title{margin:0;color:var(--dsw-alias-label-primary,#0f1115);font-size:18px;font-weight:600;line-height:26px}',
   '.ci-settings-intro,.ci-settings-description,.ci-settings-note{margin:0;font-size:13px;line-height:20px;color:var(--dsw-alias-label-tertiary,#81858c)}',
   '.ci-settings-note{padding:10px 12px;border:1px solid var(--dsw-alias-border-l2,rgba(0,0,0,.1));border-radius:8px}',
@@ -133,25 +134,42 @@ export const PANEL_CSS = [
   // with the rows that have one.
   '.ci-preset-spacer{width:18px;flex:none}',
   '.ci-preset-detail{padding:0 0 10px 24px;color:var(--dsw-alias-label-tertiary,#81858c);line-height:18px;overflow-wrap:anywhere}',
-  // Capability cards — the host plugin-inventory page's recipe: a responsive
-  // grid of framed boxes (auto-fill so the grid collapses to one column on a
-  // narrow settings window), name+switch on the head row, and a clamped
-  // two-line description preview that expanding swaps for the full text.
-  // Source dividers span the whole grid width, exactly like full-width rows
-  // in a list.
-  '.ci-cap-cards{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:8px;align-items:start}',
+  // Capability cards — measured off the host's plugin-inventory page: a
+  // fixed two-column grid (one below a 520px container query), the dedicated
+  // settings-card fill/stroke tokens, xl radius, a content area that takes
+  // the hover wash while the border holds still, and a tinted details
+  // footer. An open card deepens its border and its row-mate stays compact
+  // instead of stretching — the host's own nth-child rule, verbatim.
+  '.ci-cap-cards{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}',
   '.ci-cap-cards>.ci-source-divider{grid-column:1/-1}',
-  '.ci-cap-card{display:flex;flex-direction:column;border:.5px solid var(--dsw-alias-border-l2,rgba(0,0,0,.1));border-radius:10px;padding:2px 10px 8px;background:var(--dsw-alias-bg-layer-1,#fff);transition:border-color .12s var(--ds-ease-in-out,ease)}',
-  '.ci-cap-card:hover{border-color:var(--dsw-alias-border-l4,rgba(0,0,0,.16))}',
-  // The head row inside a card keeps its padding but loses the list-row
-  // bleed: a list row pulls its hover background 8px past the text on both
-  // sides, which inside a framed card would paint over the border.
-  '.ci-cap-card-head{margin:0;padding:6px 0}',
-  '.ci-cap-card-desc{margin:0 0 2px 26px;font-size:12px;line-height:18px;color:var(--dsw-alias-label-tertiary,#81858c);overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}',
-  // Expanded, the preview gives way to the full text inside the panel —
-  // never both at once.
-  '.ci-cap-card-open .ci-cap-card-desc{display:none}',
-  '.ci-cap-card-detail{margin:0 0 2px 26px;padding-top:2px;font-size:12px;line-height:18px;color:var(--dsw-alias-label-tertiary,#81858c);overflow-wrap:anywhere}',
+  '.ci-cap-card{display:flex;flex-direction:column;min-width:0;overflow:hidden;border:.5px solid var(--dsw-alias-settings-card-stroke,rgba(0,0,0,.1));border-radius:var(--dsw-radius-xl,12px);background:var(--dsw-alias-settings-card-fill,var(--dsw-alias-bg-layer-1,#fff))}',
+  '.ci-cap-card[data-open=true]{border-color:var(--dsw-alias-border-l3,rgba(0,0,0,.12))}',
+  '.ci-cap-card:nth-child(odd)[data-open=true]+.ci-cap-card,.ci-cap-card:nth-child(odd):has(+.ci-cap-card[data-open=true]){align-self:start}',
+  '.ci-cap-card-content{display:flex;flex-direction:column;flex:auto;align-items:stretch;gap:2px;min-height:52px;box-sizing:border-box;padding:12px 14px;transition:background .16s}',
+  '.ci-cap-card-content:hover,.ci-cap-card[data-open=true]>.ci-cap-card-content{background:var(--dsw-alias-interactive-bg-hover,rgba(38,49,72,.06))}',
+  '.ci-cap-card-main{display:flex;align-items:center;justify-content:space-between;gap:12px;min-width:0}',
+  '.ci-cap-card-expand{min-width:0;flex:1;display:inline-flex;align-items:center;padding:0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer}',
+  '.ci-cap-card-expand:disabled{cursor:default}',
+  '.ci-cap-card-expand:focus-visible,.ci-cap-card-chevronbtn:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary,#4176e6);outline-offset:-2px;border-radius:4px}',
+  '.ci-cap-card-title{flex:1;min-width:0;font-size:14px;font-weight:500;line-height:20px;text-overflow:ellipsis;white-space:nowrap;overflow:hidden}',
+  '.ci-cap-card-title-static{display:block}',
+  '.ci-cap-card-trailing{flex:none;display:inline-flex;align-items:center;gap:8px;color:var(--dsw-alias-label-tertiary,#81858c)}',
+  '.ci-cap-card-chevronbtn{flex:none;display:inline-grid;place-items:center;width:22px;height:22px;padding:0;border:0;border-radius:6px;background:none;color:var(--dsw-alias-label-tertiary,#81858c);cursor:pointer}',
+  '.ci-cap-card-chevronbtn:hover{background:var(--dsw-alias-interactive-bg-hover,rgba(38,49,72,.06))}',
+  '.ci-cap-card-chevron{transition:transform .14s var(--ds-ease-in-out,ease)}',
+  '.ci-cap-card[data-open=true] .ci-cap-card-chevron{transform:rotate(180deg)}',
+  // The description previews clamped at two lines and simply unclamps while
+  // the card is open — it never leaves the card.
+  '.ci-cap-card-desc{margin:0;font-size:12px;line-height:18px;color:var(--dsw-alias-label-tertiary,#81858c);text-wrap:pretty;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}',
+  '.ci-cap-card[data-open=true] .ci-cap-card-desc{display:block}',
+  '.ci-cap-card-details{border-top:.5px solid var(--dsw-alias-border-l2,rgba(0,0,0,.1));background:var(--dsw-alias-bg-module-platform,rgba(38,49,72,.06));padding:10px 14px 12px}',
+  '.ci-cap-facts{display:grid;grid-template-columns:76px minmax(0,1fr);gap:6px 10px;margin:0}',
+  '.ci-cap-facts>div{display:contents}',
+  '.ci-cap-facts dt{color:var(--dsw-alias-label-tertiary,#81858c);font-size:11px;line-height:17px}',
+  '.ci-cap-facts dd{min-width:0;margin:0;color:var(--dsw-alias-label-secondary,#61666b);font-size:12px;line-height:17px;overflow-wrap:anywhere}',
+  '.ci-cap-facts code{font-family:var(--ds-font-family-code,monospace);font-size:12px}',
+  '.ci-cap-card-details .ci-preset-tool-list{padding-left:12px}',
+  '@container ci-preset (width<=520px){.ci-cap-cards{grid-template-columns:minmax(0,1fr)}}',
   '.ci-preset-kinds{margin:0}',
   '.ci-preset-kinds .ci-tabs{display:inline-flex}',
   '.ci-preset-kinds .ci-tab{flex:0 0 auto;padding:0 12px}',
@@ -178,5 +196,5 @@ export const PANEL_CSS = [
   // The settings entry shares the feedback link's quiet styling but is a
   // <button>, so it also needs the control reset the anchor never did.
   '.ci-settings-link{border:0;background:none;padding:0;font-family:inherit}',
-  '@media (prefers-reduced-motion: reduce){.ci-thumb,.ci-panel,.ci-collapse,.ci-chevron svg{transition:none !important}}',
+  '@media (prefers-reduced-motion: reduce){.ci-thumb,.ci-panel,.ci-collapse,.ci-chevron svg,.ci-cap-card-chevron{transition:none !important}}',
 ].join('\n');
