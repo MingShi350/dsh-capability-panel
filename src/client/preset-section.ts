@@ -252,7 +252,7 @@ function LeafCard(props: {
   }
   const facts = props.facts ?? [];
   const expandable = description !== undefined || facts.length > 0;
-  const title = React.createElement('strong', { className: 'ci-cap-card-title' }, props.name, props.badge);
+  const foot = React.createElement('div', { className: 'ci-cap-card-foot' }, props.toggle);
   if (!expandable) {
     // Nothing to reveal: a static card, no chevron anywhere.
     return React.createElement(
@@ -265,9 +265,9 @@ function LeafCard(props: {
           'div',
           { className: 'ci-cap-card-main' },
           React.createElement('strong', { className: 'ci-cap-card-title ci-cap-card-title-static' }, props.name, props.badge),
-          React.createElement('span', { className: 'ci-cap-card-trailing' }, props.toggle),
         ),
       ),
+      foot,
     );
   }
   const aria = detailAria(props.t, props.name, disclosure.open, disclosure.disabled);
@@ -278,35 +278,22 @@ function LeafCard(props: {
     React.createElement(
       Collapsible.Root,
       { open: disclosure.open, onOpenChange: props.onOpenChange },
+      // The whole upper block is the trigger — the host plugin card's
+      // cardContent. The switch moved to the foot row is what makes that
+      // possible: no interactive element nests inside the button.
       React.createElement(
-        'div',
-        { className: 'ci-cap-card-content' },
+        Collapsible.Trigger,
+        {
+          className: 'ci-cap-card-content',
+          disabled: disclosure.disabled,
+          'aria-label': aria,
+          ...(facts.length > 0 ? { 'aria-controls': detailId } : {}),
+        },
         React.createElement(
           'div',
           { className: 'ci-cap-card-main' },
-          React.createElement(
-            Collapsible.Trigger,
-            { className: 'ci-cap-card-expand', disabled: disclosure.disabled, 'aria-label': aria },
-            title,
-          ),
-          React.createElement(
-            'span',
-            { className: 'ci-cap-card-trailing' },
-            props.toggle,
-            React.createElement(
-              'button',
-              {
-                type: 'button',
-                className: 'ci-cap-card-chevronbtn',
-                'aria-expanded': disclosure.open,
-                'aria-controls': detailId,
-                'aria-label': aria,
-                disabled: disclosure.disabled,
-                onClick: () => { props.onOpenChange(!disclosure.open); },
-              },
-              React.createElement('span', { className: 'ci-cap-card-chevron', 'aria-hidden': true }, React.createElement(IconChevronDown, { size: 14 })),
-            ),
-          ),
+          React.createElement('strong', { className: 'ci-cap-card-title' }, props.name, props.badge),
+          React.createElement('span', { className: 'ci-cap-card-chevron', 'aria-hidden': true }, React.createElement(IconChevronDown, { size: 14 })),
         ),
         description === undefined ? null : React.createElement('span', { className: 'ci-cap-card-desc' }, description),
       ),
@@ -332,6 +319,7 @@ function LeafCard(props: {
             ),
           ),
         ),
+      foot,
     ),
   );
 }
@@ -486,7 +474,6 @@ function ServerCard(props: {
       )
       : null,
   ];
-  const title = React.createElement('strong', { className: 'ci-cap-card-title' }, server.server);
   // Nothing is registered, so a tool count would be a lie: the
   // listed rows are this preset's stored default, not a roster.
   const count = server.unavailable === true
@@ -526,10 +513,10 @@ function ServerCard(props: {
           'div',
           { className: 'ci-cap-card-main' },
           React.createElement('strong', { className: 'ci-cap-card-title ci-cap-card-title-static' }, server.server),
-          React.createElement('span', { className: 'ci-cap-card-trailing' }, ...trailing),
         ),
         count,
       ),
+      React.createElement('div', { className: 'ci-cap-card-foot' }, ...trailing),
     );
   }
   return React.createElement(
@@ -539,34 +526,13 @@ function ServerCard(props: {
       Collapsible.Root,
       { open: disclosure.open, onOpenChange: props.onOpenChange },
       React.createElement(
-        'div',
-        { className: 'ci-cap-card-content' },
+        Collapsible.Trigger,
+        { className: 'ci-cap-card-content', disabled: disclosure.disabled, 'aria-label': aria, 'aria-controls': detailId },
         React.createElement(
           'div',
           { className: 'ci-cap-card-main' },
-          React.createElement(
-            Collapsible.Trigger,
-            { className: 'ci-cap-card-expand', disabled: disclosure.disabled, 'aria-label': aria },
-            title,
-          ),
-          React.createElement(
-            'span',
-            { className: 'ci-cap-card-trailing' },
-            ...trailing,
-            React.createElement(
-              'button',
-              {
-                type: 'button',
-                className: 'ci-cap-card-chevronbtn',
-                'aria-expanded': disclosure.open,
-                'aria-controls': detailId,
-                'aria-label': aria,
-                disabled: disclosure.disabled,
-                onClick: () => { props.onOpenChange(!disclosure.open); },
-              },
-              React.createElement('span', { className: 'ci-cap-card-chevron', 'aria-hidden': true }, React.createElement(IconChevronDown, { size: 14 })),
-            ),
-          ),
+          React.createElement('strong', { className: 'ci-cap-card-title' }, server.server),
+          React.createElement('span', { className: 'ci-cap-card-chevron', 'aria-hidden': true }, React.createElement(IconChevronDown, { size: 14 })),
         ),
         count,
       ),
@@ -575,6 +541,7 @@ function ServerCard(props: {
         { className: 'ci-collapse', id: detailId },
         React.createElement('div', { className: 'ci-cap-card-details' }, nestedTools),
       ),
+      React.createElement('div', { className: 'ci-cap-card-foot' }, ...trailing),
     ),
   );
 }
