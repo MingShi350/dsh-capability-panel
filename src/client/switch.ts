@@ -11,6 +11,14 @@ export interface CapabilitySwitchOptions {
   /** Accessible name; the caller translates it. */
   readonly label: string;
   readonly onCheckedChange: (checked: boolean) => void;
+  /**
+   * Render at ~80% — the card foot's quieter size. The host Switch has no
+   * size option of its own (a fixed 36×20 capsule), so the host rendition is
+   * scaled as one piece: appearance and hit behavior stay the host's, only
+   * the presentation shrinks. The legacy fallback renders its own smaller
+   * geometry instead.
+   */
+  readonly small?: boolean;
 }
 
 /** The 0.1.7 design-system Switch, as far as this panel reads its props. */
@@ -36,15 +44,24 @@ type HostSwitchComponent = (props: HostSwitchProps) => React.ReactElement;
  */
 export function capabilitySwitch(options: CapabilitySwitchOptions): React.ReactElement {
   const inert = options.disabled || options.busy;
+  const small = options.small === true;
   const HostSwitch = (primitives as unknown as { Switch?: HostSwitchComponent }).Switch;
   if (HostSwitch !== undefined) {
-    return React.createElement(HostSwitch, {
+    const control = React.createElement(HostSwitch, {
       checked: options.checked,
       onChange: options.onCheckedChange,
       label: options.label,
       disabled: inert,
     });
+    // The wrapper owns the shrunken layout box (36×20 → 29×16) so the scale
+    // leaves no phantom spacing; the transform centers the capsule inside it.
+    return small
+      ? React.createElement('span', { className: 'ci-switch-sm' }, control)
+      : control;
   }
+  const geometry = small
+    ? { track: { width: '28px', height: '16px' }, thumb: { size: '12px', offset: '12px' } }
+    : { track: { width: '32px', height: '18px' }, thumb: { size: '14px', offset: '14px' } };
   return React.createElement(
     Switch.Root,
     {
@@ -55,8 +72,8 @@ export function capabilitySwitch(options: CapabilitySwitchOptions): React.ReactE
       onCheckedChange: options.onCheckedChange,
       style: {
         position: 'relative',
-        width: '32px',
-        height: '18px',
+        width: geometry.track.width,
+        height: geometry.track.height,
         padding: 0,
         border: 'none',
         borderRadius: '999px',
@@ -70,13 +87,13 @@ export function capabilitySwitch(options: CapabilitySwitchOptions): React.ReactE
       className: 'ci-thumb',
       style: {
         display: 'block',
-        width: '14px',
-        height: '14px',
+        width: geometry.thumb.size,
+        height: geometry.thumb.size,
         margin: '2px',
         borderRadius: '999px',
         background: TOK.switchThumb,
         boxShadow: '0 1px 2px rgba(0,0,0,.22)',
-        transform: options.checked ? 'translateX(14px)' : 'translateX(0)',
+        transform: options.checked ? `translateX(${geometry.thumb.offset})` : 'translateX(0)',
         transition: `transform .12s ${TOK.switchEase}`,
       },
     }),

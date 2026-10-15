@@ -147,7 +147,7 @@ export const PANEL_CSS = [
   '.ci-cap-card-desc{margin:0;font-size:12px;line-height:18px;color:var(--dsw-alias-label-tertiary,#81858c);text-wrap:pretty;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}',
   '.ci-cap-card[data-open=true] .ci-cap-card-desc{display:block}',
   '.ci-cap-card-details{border-top:.5px solid var(--dsw-alias-border-l2,rgba(0,0,0,.1));background:var(--dsw-alias-bg-module-platform,rgba(38,49,72,.06));padding:10px 14px 12px}',
-  '.ci-cap-facts{display:grid;grid-template-columns:76px minmax(0,1fr);gap:6px 10px;margin:0}',
+  '.ci-cap-facts{display:grid;grid-template-columns:56px minmax(0,1fr);gap:6px 10px;margin:0}',
   '.ci-cap-facts>div{display:contents}',
   '.ci-cap-facts dt{color:var(--dsw-alias-label-tertiary,#81858c);font-size:11px;line-height:17px}',
   '.ci-cap-facts dd{min-width:0;margin:0;color:var(--dsw-alias-label-secondary,#61666b);font-size:12px;line-height:17px;overflow-wrap:anywhere}',
@@ -156,6 +156,11 @@ export const PANEL_CSS = [
   // The switch lives in its own quiet foot row — outside the expand gesture,
   // which is what lets the whole upper block be the button.
   '.ci-cap-card-foot{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:2px 14px 10px}',
+  // The foot switch's smaller presentation: the host capsule (36×20) scaled
+  // as one piece into a tight 29×16 layout box — no phantom spacing, the
+  // origin keeps the foot's right edge aligned.
+  '.ci-switch-sm{display:inline-grid;place-items:center;width:29px;height:16px;flex:none}',
+  '.ci-switch-sm>*{transform:scale(.8);transform-origin:center}',
   '@container ci-preset (width<=520px){.ci-cap-cards{grid-template-columns:minmax(0,1fr)}}',
   '.ci-preset-kinds{margin:0}',
   '.ci-preset-kinds .ci-tabs{display:inline-flex}',

@@ -54,6 +54,15 @@ describe('capabilitySwitch on a 0.1.7+ host (design-system Switch)', () => {
     mockState.switchImpl = () => null;
     expect(root(capabilitySwitch({ ...base, ...patch })).props['disabled']).toBe(true);
   });
+
+  it('wraps the host capsule in the scaling foot box when small', () => {
+    const HostSwitch = vi.fn(() => null);
+    mockState.switchImpl = HostSwitch;
+    const wrapper = root(capabilitySwitch({ ...base, small: true }));
+    expect(wrapper.props['className']).toBe('ci-switch-sm');
+    const children = wrapper.props['children'] as React.ReactElement;
+    expect((children as unknown as { type: unknown }).type).toBe(HostSwitch);
+  });
 });
 
 describe('capabilitySwitch on a legacy host (local rendition)', () => {
@@ -115,5 +124,15 @@ describe('capabilitySwitch on a legacy host (local rendition)', () => {
     expect(style['borderRadius']).toBe('999px');
     expect(style['transition']).toContain('.12s');
     expect(style['boxShadow']).toBe('0 1px 2px rgba(0,0,0,.22)');
+  });
+
+  it('renders its own smaller geometry when small', () => {
+    mockState.switchImpl = undefined;
+    const track = root(capabilitySwitch({ ...base, small: true })).props['style'] as Record<string, string>;
+    expect(track['width']).toBe('28px');
+    expect(track['height']).toBe('16px');
+    const thumbStyle = thumb(capabilitySwitch({ ...base, small: true })).props['style'] as Record<string, string>;
+    expect(thumbStyle['width']).toBe('12px');
+    expect(thumbStyle['transform']).toBe('translateX(12px)');
   });
 });

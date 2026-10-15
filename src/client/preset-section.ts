@@ -173,7 +173,8 @@ function SourceDivider(props: {
   );
 }
 
-/** One switch, shared by tool cards, server cards and skill cards. */
+/** One switch, shared by tool cards, server cards and skill cards — every
+ *  one of them lives in a card foot, so all take the smaller presentation. */
 function CapabilitySwitch(props: {
   readonly on: boolean;
   readonly frozen: boolean;
@@ -188,6 +189,7 @@ function CapabilitySwitch(props: {
     busy: props.busy,
     label: props.label,
     onCheckedChange: props.onChange,
+    small: true,
   });
 }
 
@@ -324,13 +326,6 @@ function LeafCard(props: {
   );
 }
 
-/** The translated source label, falling back to the raw runtime value. */
-function sourceLabel(t: Translate, source: string): string {
-  const key = `source.${source}`;
-  const translated = t(key);
-  return translated === key ? source : translated;
-}
-
 function SkillCard(props: {
   readonly t: Translate;
   readonly skill: PresetSkillView;
@@ -342,10 +337,16 @@ function SkillCard(props: {
   readonly onOpenChange: (open: boolean) => void;
 }): React.ReactElement {
   const { t, skill } = props;
-  const facts: CardFact[] = [
-    ...(skill.source === undefined ? [] : [{ label: t('card.source'), value: sourceLabel(t, skill.source) }]),
-    ...(skill.path === undefined ? [] : [{ label: t('card.path'), value: skill.path }]),
-  ];
+  // One fact worth the details panel: the skill's FULL discovery root in
+  // code — the group divider above abbreviates it, so the unabridged path
+  // is the detail that adds information. Everything else the card could
+  // say, the divider already says. Preset rows may replace `source` with
+  // the synthetic `path:<root>` group key (older-client compat), so the
+  // raw root comes from the group key when it is one.
+  const rawRoot = skill.group?.startsWith('path:') === true ? skill.group.slice(5) : skill.path;
+  const facts: CardFact[] = rawRoot === undefined
+    ? []
+    : [{ label: t('card.path'), value: React.createElement('code', null, rawRoot) }];
   return React.createElement(LeafCard, {
     rowKey: `skill:${skill.name}`,
     name: skill.name,
