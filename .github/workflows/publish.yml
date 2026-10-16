@@ -1,42 +1,129 @@
-name: publish
+# Publish to npmjs.org via OIDC trusted publishing.
+#
+# Why this workflow exists: publishing from a developer machine requires an
+# interactive npm login, a long-lived token in ~/.npmrc, and (with 2FA on)
+# a one-time password per release. OIDC trusted publishing replaces all of
+# that with a short-lived token npmjs.org mints from this workflow's
+# id-token claims. There is no secret to create, store or rotate.
+#
+# One-time operator setup:
+#   npmjs.com -> package "dsh-capability-panel" -> Settings -> Trusted publishers
+#     Provider:          GitHub Actions
+#     Organization:      pure-craft
+#     Repository:        dsh-capability-panel
+#     Workflow filename: publish.yml   <-- basename only, NOT a path
+#     Environment:       (leave blank; this workflow sets no environment)
+#
+# Releasing is then: bump package.json, commit, tag v<version>, push the tag.
+# The tag push publishes to npm and creates the matching GitHub Release.
+#
+# Requirements that are easy to get wrong:
+# - npm >= 11.5.1 is mandatory. npm 10.x generates the provenance statement
+#   but does NOT attach OIDC auth headers to the publish request, so the
+#   registry answers 404 PUT even though the trusted publisher is configured
+#   correctly. Node 24 ships a new enough npm; Node 22 ships npm 10.9.x and
+#   fails. The version guard below fails fast instead of publishing blind.
+# - `permissions: id-token: write` is what makes the OIDC handshake possible.
+# - The workflow filename in the npmjs.com config must match this file's
+#   basename exactly; a mismatch is also a 404 PUT.
 
-# A GitHub Release is the single trigger: the release's tag carries the version,
-# and the release only exists after main is green, so this never publishes
-# unverified code. Publishing from `npm publish` locally stays possible as a
-# fallback.
+name: Publish
+
 on:
-  release:
-    types: [published]
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write # create the GitHub Release for the tag
+  id-token: write # OIDC trusted publishing to npmjs.org
 
 jobs:
   publish:
+    name: Publish to npm
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: '24.x'
+          registry-url: 'https://registry.npmjs.org'
           cache: pnpm
-          # Public npm; NODE_AUTH_TOKEN (repo secret) authenticates. Use an
-          # npm "automation" granular token so CI publishes skip the OTP prompt.
-          registry-url: https://registry.npmjs.org/
-      - run: pnpm install --frozen-lockfile
-      # The tag must match package.json, or the registry and the repo disagree
-      # about what version this release is.
-      - name: Tag must match package.json version
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Guard npm version (trusted publishing needs >= 11.5.1)
         run: |
-          TAG="${GITHUB_REF_NAME#v}"
-          PKG=$(node -p "require('./package.json').version")
-          if [ "$TAG" != "$PKG" ]; then
-            echo "tag $GITHUB_REF_NAME != package.json $PKG" >&2
-            exit 1
+          set -euo pipefail
+          NPM_VERSION=$(npm --version)
+          echo "npm $NPM_VERSION on node $(node --version)"
+          node -e '
+            const [maj, min] = process.argv[1].split(".").map(Number);
+            if (maj < 11 || (maj === 11 && min < 5)) {
+              console.error("npm " + process.argv[1] + " cannot do trusted publishing (needs >= 11.5.1).");
+              process.exit(1);
+            }
+          ' "$NPM_VERSION"
+
+      - name: Guard tag matches package.json version
+        run: |
+          set -euo pipefail
+          VERSION=$(node -p "require('./package.json').version")
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            TAG="${GITHUB_REF_NAME#v}"
+            if [ "$TAG" != "$VERSION" ]; then
+              echo "Tag v$TAG does not match package.json version $VERSION" >&2
+              exit 1
+            fi
           fi
-      # prepublishOnly runs check + build; run them explicitly so a red gate
-      # fails THIS job with readable logs, not inside publish's lifecycle hook.
-      - run: pnpm run check
-      - run: pnpm run test:coverage
-      - run: pnpm run build
-      - run: npm publish --access public
+          echo "Publishing version $VERSION"
+
+      # `npm publish` also runs prepublishOnly (pnpm check && pnpm build), so
+      # the tarball is always built from a passing tree. These steps exist to
+      # surface the failure as itself rather than inside the publish log —
+      # including the 100% coverage gates, which `pnpm check` does not run.
+      - name: Check
+        run: pnpm check
+
+      - name: Coverage gates
+        run: pnpm run test:coverage
+
+      - name: Build
+        run: pnpm build
+
+      - name: Publish
+        # No NODE_AUTH_TOKEN: npm negotiates OIDC with npmjs.org using this
+        # workflow's id-token claims, and --provenance attaches a signed
+        # attestation linking the tarball to this run and commit SHA.
+        run: npm publish --provenance --access public
+
+      - name: Create GitHub Release
+        # Runs only for a tag push: a manual dispatch has no release tag to
+        # name the release after. Idempotent, so a re-run is safe. The Release
+        # is created after the npm publish so a failed publish never
+        # announces a version that does not exist.
+        if: github.ref_type == 'tag'
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            echo "Release $GITHUB_REF_NAME already exists — leaving it untouched."
+            exit 0
+          fi
+          gh release create "$GITHUB_REF_NAME" \
+            --title "$GITHUB_REF_NAME" \
+            --generate-notes
