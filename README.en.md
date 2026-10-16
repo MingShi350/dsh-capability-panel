@@ -36,7 +36,7 @@ This plugin turns both into one panel at the right of the composer.
 
 - **Ground-truth load states.** Every skill reports what the model actually sees on the next request: `loaded` (full instructions in context), `truncated` (the pruner kept head & tail, cut the middle), `evicted` (compaction took it entirely), or `not loaded` — plus a cumulative load count, so a skill reloaded after eviction reads `loaded ×2`.
 - **Per-session switches that survive restarts.** Turn a skill, tool, or whole MCP server off for the current conversation. The switch applies from the next prompt assembly, stays bound to that session across a dsh restart, and never touches another session or the conversation history.
-- **Preset defaults.** Settings → Capability Panel stores the default capability set per agent preset; sessions created or resumed afterward inherit it. All / Skills / MCP / Tools category switching, collapsible groups, and the same filter and switches as the session panel — a preset default is a starting point the session can still override.
+- **Preset defaults.** Settings → Capability Panel stores the default capability set per agent preset; sessions created or resumed afterward inherit it. The same card interaction as the host’s built-in plugin page: the whole upper block of a card expands on click, switches stay at the card foot, All / Skills / MCP / Tools category switching, source grouping — a preset default is a starting point the session can still override.
 - **MCP grouped by server.** Two hundred tools behind two servers stay scannable: collapse to one row per server, flip the whole server in one write.
 - **Offline servers stay listed.** An MCP server declared in the host composition but currently registering no tools (a local on-demand service that isn't running) still gets a row — marked honestly as "no tools registered", showing the positions already stored off for it, with a **Reload** button that retries the connection now. Late-registered tools also pick up the session's stored defaults automatically.
 - **Grouped by source.** Skills and MCP servers cluster under labeled divider rules: preset-bundled entries name the preset they came from; everything else shows its real directory (`~/.dsh/skills`, project-relative paths, middle-ellipsized when long) — "where did this skill come from" is answered at a glance.
@@ -89,11 +89,11 @@ Open any conversation and click the panel icon at the right of the composer; the
 - The filter box at the top matches name, description, or state label, with an `X / Y` matched count
 - Divider rules group each tab by source: a preset name for preset-bundled entries, otherwise the on-disk directory — hover a divider for the full path, click it to open that folder in the file manager
 - A disabled row renders dimmed, and the model is told in its system prompt that you turned the capability off
-- A pinned footer bar stays at the bottom: "Global settings" on the left jumps straight to Settings → Capability Panel, "Report an issue" on the right opens the issue tracker
+- A pinned footer bar holds "Report an issue": one click to the issue tracker
 
 `run_code` is the reserved Code Mode transport — the registry forbids masking it, so its switch is locked on.
 
-Two scopes, same switches: **the composer panel** is bound to the session in front of you (and restored with it after a restart); **Settings → Capability Panel** decides what every later session starts from — the footer's "Global settings" entry jumps straight to that page. Preset defaults are read when a session agent is created — they do not rewrite preset files and do not change agents that are already running.
+Two scopes, same switches: **the composer panel** is bound to the session in front of you (and restored with it after a restart); **Settings → Capability Panel** decides what every later session starts from. Preset defaults are read when a session agent is created — they do not rewrite preset files and do not change agents that are already running.
 
 ![Settings → Capability Panel: per-preset default capabilities](docs/images/panel-settings.png)
 

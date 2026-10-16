@@ -6,7 +6,7 @@ All notable changes to this project will be documented here. The format follows 
 - 每条一行,从用户视角写(他得到/失去什么),不复制 commit message。
 - 发版流程:Unreleased 切段 → 版本号 + 日期 → `git tag vX.Y.Z` → `npm publish` → `gh release create`。
 
-## [Unreleased]
+## [1.4.1] - 2026-10-16
 
 ### Removed
 
