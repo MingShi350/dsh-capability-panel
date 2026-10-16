@@ -185,8 +185,5 @@ export const PANEL_CSS = [
   '.ci-feedback-link:hover{color:var(--dsw-alias-label-primary,#0f1115);text-decoration:underline}',
   '.ci-feedback-link:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary,#4176e6);outline-offset:2px;border-radius:3px}',
   '.ci-feedback-icon{display:inline-grid;place-items:center;flex:none}',
-  // The settings entry shares the feedback link's quiet styling but is a
-  // <button>, so it also needs the control reset the anchor never did.
-  '.ci-settings-link{border:0;background:none;padding:0;font-family:inherit}',
   '@media (prefers-reduced-motion: reduce){.ci-thumb,.ci-panel,.ci-collapse,.ci-chevron svg,.ci-cap-card-chevron{transition:none !important}}',
 ].join('\n');

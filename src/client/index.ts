@@ -57,8 +57,6 @@ import {
   IconSearch,
   IconRefresh,
   IconPanelLeft,
-  IconSettings,
-  HOST_HAS_MODERN_SHELL,
 } from './icons.js';
 // The host glyph each kind of row leads with: skills, tools, and extension
 // servers. See row-icon.ts for the host surfaces each name comes from.
@@ -132,116 +130,6 @@ function sortSkills(skills: readonly SkillEntry[]): SkillEntry[] {
   return [...skills].sort(
     (a, b) => STATE_ORDER[a.state] - STATE_ORDER[b.state] || a.name.localeCompare(b.name),
   );
-}
-
-/**
- * Platform for the settings shortcut's modifier: `primary` resolves to Cmd on
- * macOS and Ctrl elsewhere.
- */
-function isMacPlatform(): boolean {
-  const platform = navigator.platform ?? '';
-  return platform !== '' ? /mac/i.test(platform) : /mac/i.test(navigator.userAgent ?? '');
-}
-
-/**
- * Whether this page runs inside the desktop shell, detected the same way the
- * shell's own shortcut service does: the desktop preload stamps
- * `<html data-platform>`, a plain browser page has none.
- */
-function isDesktopShell(): boolean {
-  return document.documentElement?.dataset['platform'] !== undefined;
-}
-
-/**
- * Open the Settings modal by driving its official keybinding through the input
- * pipeline — the FALLBACK for shells whose settings trigger cannot be found in
- * the DOM. The host's shortcuts service listens for `keydown` on `window` with
- * no `isTrusted` gate, so a synthesized event is processed exactly like a
- * physical press — region "page" (no editable/terminal ancestor), no open
- * shortcut-modal, both of which the `settings.open` command accepts.
- *
- * Two 0.2.0-era constraints shape the chord. The binding table splits by
- * runtime: desktop keeps primary+Comma, the web profile binds
- * primary+alt+Comma (the browser's own menu owns the plain chord), so the
- * synthesized event must match the runtime it lands in. And on the desktop
- * shell the NATIVE keyboard bridge owns every configurable binding — the DOM
- * listener bails out before dispatch (`if (native) return`), so a synthesized
- * event is swallowed there no matter its shape; that shell is why the trigger
- * click in `openGlobalSettings` is the primary path and this the fallback.
- *
- * This deliberately uses the input seam, not a host internal: the shortcuts
- * service is not visible to plugin contexts, and the settings shell exposes no
- * section deep-link (`openSection` stays internal to the shell). Caveats,
- * accepted over shipping no entry at all: a user who rebound the settings
- * shortcut changed what this gesture triggers, and hosts older than 0.1.7 have
- * no such binding at all — the caller gates the entry on `HOST_HAS_MODERN_SHELL`.
- */
-function dispatchOpenSettings(): void {
-  const mac = isMacPlatform();
-  window.dispatchEvent(
-    new KeyboardEvent('keydown', {
-      code: 'Comma',
-      key: ',',
-      metaKey: mac,
-      ctrlKey: !mac,
-      // The web profile's default chord carries alt; the desktop one does not.
-      altKey: !isDesktopShell(),
-      bubbles: true,
-      cancelable: true,
-    }),
-  );
-}
-
-/**
- * Select our own section inside an open Settings dialog by clicking its nav
- * row — the official user interaction, located through two anchors that cannot
- * drift with host internals: the dialog's own `data-shortcut-modal="settings"`
- * attribute (the shortcut system's public hook) and OUR OWN localized section
- * label as the row's text. Returns false when the row is not (yet) there, so
- * the caller can retry while the modal mounts.
- */
-function selectCapabilitySection(label: string): boolean {
-  const dialog = document.querySelector('[data-shortcut-modal="settings"]');
-  const buttons = dialog?.querySelectorAll('nav button') ?? [];
-  for (const button of buttons) {
-    if (button.textContent?.trim() === label) {
-      (button as HTMLButtonElement).click();
-      return true;
-    }
-  }
-  return false;
-}
-
-/**
- * Open Settings ON the capability-panel section. The shell offers no section
- * deep-link, so this drives the two official gestures in sequence: open the
- * dialog, then click our nav row once it has mounted.
- *
- * The opening gesture is the shell's own settings TRIGGER — the button
- * wrapping the `settings.trigger` slot outlet — clicked like a user would.
- * That is the one path that works on every shell the panel supports: the 0.2
- * desktop window routes configurable bindings through its native keyboard
- * bridge and discards synthesized DOM keydowns outright, while the web
- * profile's binding moved to primary+alt — both break the bare keybinding
- * dispatch, neither breaks a click. The synthesized keybinding stays as the
- * fallback for a shell whose trigger this query cannot name. The retry is
- * bounded; if the row never appears the user still lands on the settings
- * landing page, which is the pre-existing behavior.
- */
-function openGlobalSettings(sectionLabel: string): void {
-  close();
-  if (document.querySelector('[data-shortcut-modal="settings"]') === null) {
-    const trigger = document.querySelector('[data-slot="settings.trigger"]')?.closest('button');
-    if (trigger !== null && trigger !== undefined) trigger.click();
-    else dispatchOpenSettings();
-  }
-  let attempts = 0;
-  const trySelect = (): void => {
-    attempts += 1;
-    if (selectCapabilitySection(sectionLabel)) return;
-    if (attempts < 20) requestAnimationFrame(trySelect);
-  };
-  requestAnimationFrame(trySelect);
 }
 
 export function apply(ctx: SlotContext): void {
@@ -1211,10 +1099,6 @@ export function apply(ctx: SlotContext): void {
               // tab; rel guards the reverse-tabnabbing vector. The host's own
               // link glyph leads it (right-aligned so it never competes with
               // the list above); label is fully localized via locale keys.
-              // The left seat holds the jump to the global settings page: the
-              // panel edits the session, the settings page edits the defaults
-              // every new session inherits. On a host too old to expose the
-              // shortcuts registry the entry does not render at all.
               // Pinned below the scroll viewport with the host Menu's footer
               // recipe: flex:none plus an l2 hairline (l1 is near-invisible on
               // the menu surface).
@@ -1224,33 +1108,13 @@ export function apply(ctx: SlotContext): void {
                   style: {
                     flex: 'none',
                     display: 'flex',
-                    justifyContent: 'space-between',
+                    justifyContent: 'flex-end',
                     alignItems: 'center',
                     marginTop: '6px',
                     paddingTop: '8px',
                     borderTop: '0.5px solid var(--dsw-alias-border-l2, rgba(0,0,0,.1))',
                   },
                 },
-                (() => {
-                  // The settings shortcut only exists on the 0.1.7+ shell (see
-                  // hasModernShell); older hosts hide the entry entirely rather
-                  // than offer a button whose click can only be a no-op.
-                  return HOST_HAS_MODERN_SHELL
-                    ? h(
-                        'button',
-                        {
-                          type: 'button',
-                          className: 'ci-feedback-link ci-settings-link',
-                          title: t('footer.openSettingsHint'),
-                          onClick: () => {
-                            openGlobalSettings(t('preset.nav'));
-                          },
-                        },
-                        h('span', { className: 'ci-feedback-icon', 'aria-hidden': true }, h(IconSettings, { size: 16 })),
-                        t('footer.openSettings'),
-                      )
-                    : h('span');
-                })(),
                 h('a', {
                   href: FEEDBACK_URL,
                   target: '_blank',
